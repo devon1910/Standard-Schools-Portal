@@ -5,7 +5,7 @@ import Modal from '../components/Modal';
 
 // Optional: Import icons if you install react-icons
 import { FaEdit, FaTrashAlt, FaPlus } from 'react-icons/fa';
-import { getDashboardData } from '../services/StandardSchoolsAPIService';
+import { getDashboardData, submitQuestionData } from '../services/StandardSchoolsAPIService';
 
 const QuestionsPage = () => {
     const[isLoading, setIsLoading] = useState(false);
@@ -24,37 +24,40 @@ const QuestionsPage = () => {
   const [allSubjects, setAllSUbjects] = useState([]);
   const [allClassTypes, setAllClassTypes] = useState([]);
  
-
-    useEffect(() => {
-        setIsLoading(true)
+    const GetDashboardGenericData = async () => {   
         getDashboardData().then((data) => {
-            console.log("data.data.sessions: ",data);
-            setAvailableSessions(data.data.sessions)
-            setAvailableClasses(data.data.classes)
-            setAvailableTerms(data.data.terms)
-            setAllQuestions(data.data.questions)
-            setAllSUbjects(data.data.subjects)
-            setAllClassTypes(data.data.classTypes)
 
+          setAvailableSessions(data.data.sessions)
+          setAvailableClasses(data.data.classes)
+          setAvailableTerms(data.data.terms)
+          setAllQuestions(data.data.questions)
+          setAllSUbjects(data.data.subjects)
+          setAllClassTypes(data.data.classTypes)
+          
         }).catch((error) => {
             console.log(error)
         }).finally(() => {
             setIsLoading(false);
         })
+
+    }
+
+    useEffect(() => {
+        setIsLoading(true)
+        GetDashboardGenericData();
     },[])
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  
 
 
-  const filteredQuestions = allQuestions.filter(
-    (q) => q.session.name === selectedSession && q.term.name === selectedTerm
-  );
+  // const filteredQuestions = allQuestions.filter(
+  //   (q) => q.session.name === selectedSession && q.term.name === selectedTerm
+  // );
 
   const tableHeaders = ['Subject', 'Question','Actions'];
 
 
-  const tableRows = filteredQuestions.map(q => ({
+  const tableRows = allQuestions.map(q => ({
     id: q.id,
     data: [q.subject.name,q.questionText],
     actions: (
@@ -90,8 +93,18 @@ const QuestionsPage = () => {
   };
 
   const handleFormSubmit = (data) => {
-    console.log('Form Submitted:', data);
+     setIsLoading(true)
+
+    submitQuestionData(data).then((response) => {
+      console.log('Response: ', response);
+      GetDashboardGenericData();
+    
+
+    }).catch((error) => {
+      console.error('Error: ', error);
+    })
     closeModal();
+     
   };
 
   if (isLoading) {
@@ -185,7 +198,7 @@ const QuestionsPage = () => {
         </div>
       </div>
 
-      {filteredQuestions.length > 0 ? (
+      {allQuestions.length > 0 ? (
         <div className="overflow-x-auto">
           <Table headers={tableHeaders} rows={tableRows} />
         </div>
@@ -199,8 +212,8 @@ const QuestionsPage = () => {
         <QuestionForm 
         onSubmit={handleFormSubmit} 
         initialData={editingQuestion} 
-        defaultSession={selectedSession} 
-        defaultTerm={selectedTerm}
+        allSessions={availableSessions} 
+        allTerms={availableTerms}
         allSubjects={allSubjects}
         allClassTypes={allClassTypes}
         availableClasses={availableClasses} />

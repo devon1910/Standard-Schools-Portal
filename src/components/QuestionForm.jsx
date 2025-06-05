@@ -3,19 +3,17 @@ import React, { useState, useEffect } from "react";
 const QuestionForm = ({
   onSubmit,
   initialData,
-  defaultSession,
-  defaultTerm,
+  allSessions,
+  allTerms,
   allSubjects,
-  allClassTypes,
   availableClasses,
 }) => {
   const [formData, setFormData] = useState({
-    subject: "",
-    classTypeId: 0,
+    subjectId: "",
     classId: 0,
-    type: "CA", // 'CA' or 'Exam'
-    term: defaultTerm || "1st", // Default to current selected term
-    session: defaultSession || "", // Default to current selected session
+    type: "0", // 'CA' or 'Exam'
+    termId: "1st", // Default to current selected term
+    sessionId: "", // Default to current selected session
     questionText: "",
   });
 
@@ -24,37 +22,38 @@ const QuestionForm = ({
       setFormData(initialData);
     } else {
       setFormData({
-        subject: "",
-        classTypeId: "",
+        subjectId: "",
         classId: "",
-        type: "CA",
-        term: defaultTerm || "1st",
-        session: defaultSession || "",
+        type: "0",
+        termId: "1st",
+        sessionId: "",
         questionText: "",
       });
     }
-  }, [initialData, defaultSession, defaultTerm]);
+  }, [initialData]);
 
-  // Filter subjects based on selected classTypeId
-  const filteredSubjects = allSubjects.filter(
-    (subject) => subject.classTypeId == formData.classTypeId
+  // Find the selected class to get its classTypeId
+  const selectedClass = availableClasses.find(
+    (classData) => classData.id == formData.classId
   );
 
-  // Filter classes based on selected classTypeId
-  const filteredClasses = availableClasses.filter(
-    (classData) => classData.classTypeId == formData.classTypeId
-  );
+  // Filter subjects based on the classTypeId of the selected class
+  const filteredSubjects = selectedClass
+    ? allSubjects.filter(
+        (subject) => subject.classTypeId == selectedClass.classTypeId
+      )
+    : [];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     // If classTypeId is changed, reset subject and classId
     if (name === "classTypeId") {
-      setFormData((prev) => ({ 
-        ...prev, 
+      setFormData((prev) => ({
+        ...prev,
         [name]: value,
-        subject: "", // Reset subject when class section changes
-        classId: ""  // Reset class when class section changes
+        subjectId: "", // Reset subject when class section changes
+        classId: "", // Reset class when class section changes
       }));
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
@@ -63,36 +62,13 @@ const QuestionForm = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
     onSubmit(formData);
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
       <div className="flex gap-4">
-        <div className="flex-1">
-          <label
-            htmlFor="classTypeId"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Class Section
-          </label>
-          <select
-            id="classTypeId"
-            name="classTypeId"
-            value={formData.classTypeId}
-            onChange={handleChange}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
-            required
-          >
-            <option value="">Select Class Section</option>
-            {allClassTypes.map((classType) => (
-              <option key={classType.id} value={classType.id}>
-                {classType.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
         <div className="flex-1">
           <label
             htmlFor="classId"
@@ -107,41 +83,39 @@ const QuestionForm = ({
             onChange={handleChange}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
             required
-            disabled={!formData.classTypeId}
           >
             <option value="">Select Class</option>
-            {filteredClasses.map((classData) => (
+            {availableClasses.map((classData) => (
               <option key={classData.id} value={classData.id}>
                 {classData.name}
               </option>
             ))}
           </select>
         </div>
-      </div>
-      
-      <div>
-        <label
-          htmlFor="subject"
-          className="block text-sm font-medium text-gray-700 mb-1"
-        >
-          Subject
-        </label>
-        <select
-          id="subject"
-          name="subject"
-          value={formData.subject}
-          onChange={handleChange}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
-          required
-          disabled={!formData.classTypeId}
-        >
-          <option value="">Select Subject</option>
-          {filteredSubjects.map((subject) => (
-            <option key={subject.id} value={subject.id}>
-              {subject.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex-1">
+          <label
+            htmlFor="subject"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Subject
+          </label>
+          <select
+            id="subjectId"
+            name="subjectId"
+            value={formData.subjectId}
+            onChange={handleChange}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
+            required
+            disabled={!formData.classId}
+          >
+            <option value="">Select Subject</option>
+            {filteredSubjects.map((subject) => (
+              <option key={subject.id} value={subject.id}>
+                {subject.name}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="flex gap-3">
@@ -160,48 +134,60 @@ const QuestionForm = ({
             className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
             required
           >
-            <option value="CA">Continuous Assessment (CA)</option>
-            <option value="Exam">Exam</option>
+            <option value="0">Continuous Assessment (CA)</option>
+            <option value="1">Exam</option>
           </select>
         </div>
 
         <div className="flex-1">
           <label
-            htmlFor="session"
+            htmlFor="sessionId"
             className="block text-sm font-medium text-gray-700 mb-1"
           >
             Session
           </label>
-          <input
-            type="text"
-            id="session"
-            name="session"
-            value={formData.session}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed sm:text-sm"
+          <select
+            id="sessionId"
+            name="sessionId"
+            value={formData.sessionId}
+            onChange={handleChange}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
             required
-            readOnly
-          />
+          >
+            <option value="">Select Session</option>
+            {allSessions.map((session) => (
+              <option key={session.id} value={session.id}>
+                {session.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="flex-1">
           <label
-            htmlFor="term"
+            htmlFor="termId"
             className="block text-sm font-medium text-gray-700 mb-1"
           >
             Term
           </label>
-          <input
-            type="text"
-            id="term"
-            name="term"
-            value={formData.term}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed sm:text-sm"
+          <select
+            id="termId"
+            name="termId"
+            value={formData.termId}
+            onChange={handleChange}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
             required
-            readOnly
-          />
+          >
+            <option value="">Select Term</option>
+            {allTerms.map((term) => (
+              <option key={term.id} value={term.id}>
+                {term.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
-      
+
       <div>
         <label
           htmlFor="questionText"
