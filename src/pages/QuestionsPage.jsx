@@ -4,33 +4,49 @@ import Table from '../components/Table';
 import Modal from '../components/Modal';
 
 // Optional: Import icons if you install react-icons
-import { FaEdit, FaTrashAlt, FaPlus } from 'react-icons/fa';
+import { FaEdit, FaTrashAlt, FaPlus, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { deleteQuestionData, getDashboardData, submitQuestionData } from '../services/StandardSchoolsAPIService';
 
 const QuestionsPage = () => {
     const[isLoading, setIsLoading] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
 
-  const [selectedSession, setSelectedSession] = useState('2024/2025');
-  const [selectedTerm, setSelectedTerm] = useState('1st');
-  const [selectedClass, setSelectedClass] = useState('JSS1 A');
-  const [selectedQuestionType, setSelectedQuestionType] = useState('CA');
+  const [selectedSession, setSelectedSession] = useState('');
+  const [selectedTerm, setSelectedTerm] = useState('');
+  const [selectedClass, setSelectedClass] = useState('');
+  const [selectedQuestionType, setSelectedQuestionType] = useState('');
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [availableSessions, setAvailableSessions] = useState([]);
   const [availableClasses, setAvailableClasses] = useState([]);
   const [availableTerms,setAvailableTerms] = useState([]);
   const availableQuestionType=[{id:0, name:'CA'},{id:1, name: 'Exam'}];
-  const [allQuestions, setAllQuestions] = useState([]);
+  const [questions, setQuestions] = useState([]);
   const [allSubjects, setAllSUbjects] = useState([]);
   const [allClassTypes, setAllClassTypes] = useState([]);
  
     const GetDashboardGenericData = async () => {   
-        getDashboardData().then((data) => {
+        const filters = {
+            sessionId: selectedSession || null,
+            termId: selectedTerm || null,
+            classId: selectedClass || null,
+            questionType: selectedQuestionType ? availableQuestionType[parseInt(selectedQuestionType)].name : null,
+            page: currentPage,
+            pageSize: pageSize
+        };
 
+        getDashboardData(filters).then((data) => {
           setAvailableSessions(data.data.sessions)
           setAvailableClasses(data.data.classes)
           setAvailableTerms(data.data.terms)
-          setAllQuestions(data.data.questions)
+          setQuestions(data.data.questions.items || data.data.questions)
+          setTotalRecords(data.data.questions.totalRecords || data.data.questions.length)
+          setTotalPages(data.data.questions.totalPages || Math.ceil((data.data.questions.length || 0) / pageSize))
           setAllSUbjects(data.data.subjects)
           setAllClassTypes(data.data.classTypes)
           
@@ -44,15 +60,16 @@ const QuestionsPage = () => {
 
     useEffect(() => {
         setIsLoading(true)
+        setCurrentPage(1); // Reset to first page when filters change
         GetDashboardGenericData();
-    },[])
+    },[selectedSession, selectedTerm, selectedClass, selectedQuestionType])
+
+    useEffect(() => {
+        setIsLoading(true)
+        GetDashboardGenericData();
+    },[currentPage])
+
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-
-
-  // const filteredQuestions = allQuestions.filter(
-  //   (q) => q.session.name === selectedSession && q.term.name === selectedTerm
-  // );
 
   const tableHeaders = ['Subject', 'Question','Actions'];
 
@@ -63,12 +80,14 @@ const QuestionsPage = () => {
         GetDashboardGenericData();
       }).catch((error) => {
         console.log(error)
+        setIsLoading(false)
       })
+    } else {
+      setIsLoading(false)
     }
-
   }
 
-  const tableRows = allQuestions.map(q => ({
+  const tableRows = questions.map(q => ({
     id: q.id,
     data: [q.subject.name,q.questionText],
     actions: (
@@ -128,6 +147,114 @@ const QuestionsPage = () => {
      
   };
 
+  // Get current filter display names for the no questions message
+  const getFilterDisplayNames = () => {
+    const sessionName = availableSessions.find(s => s.id.toString() === selectedSession)?.name || selectedSession;
+    const termName = availableTerms.find(t => t.id.toString() === selectedTerm)?.name || selectedTerm;
+    const className = availableClasses.find(c => c.id.toString() === selectedClass)?.name || selectedClass;
+    const typeName = availableQuestionType.find(t => t.id.toString() === selectedQuestionType)?.name || selectedQuestionType;
+    
+    return { sessionName, termName, className, typeName };
+  };
+
+  const handleClearAllFilters = () => {
+    setSelectedSession('');
+    setSelectedTerm('');
+    setSelectedClass('');
+    setSelectedQuestionType('');
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+    }
+  };
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+    
+    if (endPage - startPage + 1 < maxVisiblePages) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    return (
+      <div className="flex items-center justify-between mt-6">
+        <div className="text-sm text-gray-700">
+          Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalRecords)} of {totalRecords} results
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <FaChevronLeft className="inline-block mr-1" />
+            Previous
+          </button>
+          
+          {startPage > 1 && (
+            <>
+              <button
+                onClick={() => handlePageChange(1)}
+                className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                1
+              </button>
+              {startPage > 2 && <span className="text-gray-500">...</span>}
+            </>
+          )}
+          
+          {pageNumbers.map(number => (
+            <button
+              key={number}
+              onClick={() => handlePageChange(number)}
+              className={`px-3 py-2 text-sm font-medium rounded-md ${
+                currentPage === number
+                  ? 'text-white bg-primary-orange border border-primary-orange'
+                  : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {number}
+            </button>
+          ))}
+          
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && <span className="text-gray-500">...</span>}
+              <button
+                onClick={() => handlePageChange(totalPages)}
+                className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                {totalPages}
+              </button>
+            </>
+          )}
+          
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+            <FaChevronRight className="inline-block ml-1" />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
@@ -163,6 +290,7 @@ const QuestionsPage = () => {
             onChange={(e) => setSelectedSession(e.target.value)}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm cursor-pointer"
           >
+            <option value="">All Sessions</option>
             {availableSessions.map(session => (
               <option key={session.id} value={session.id}>{session.name}</option>
             ))}
@@ -170,7 +298,7 @@ const QuestionsPage = () => {
         </div>
 
         <div className="flex-1">
-          <label htmlFor="term-filter" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="class-filter" className="block text-sm font-medium text-gray-700 mb-1">
             Select Class
           </label>
           <select
@@ -180,8 +308,9 @@ const QuestionsPage = () => {
             onChange={(e) => setSelectedClass(e.target.value)}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm cursor-pointer"
           >
-            {availableClasses.map(term => (
-              <option key={term.id} value={term.id}>{term.name}</option>
+            <option value="">All Classes</option>
+            {availableClasses.map(classItem => (
+              <option key={classItem.id} value={classItem.id}>{classItem.name}</option>
             ))}
           </select>
         </div>
@@ -196,13 +325,14 @@ const QuestionsPage = () => {
             onChange={(e) => setSelectedTerm(e.target.value)}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm cursor-pointer"
           >
+            <option value="">All Terms</option>
             {availableTerms.map(term => (
               <option key={term.id} value={term.id}>{term.name}</option>
             ))}
           </select>
         </div>
          <div className="flex-1">
-          <label htmlFor="term-filter" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="questionType-filter" className="block text-sm font-medium text-gray-700 mb-1">
             Select Questions Type
           </label>
           <select
@@ -212,6 +342,7 @@ const QuestionsPage = () => {
             onChange={(e) => setSelectedQuestionType(e.target.value)}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm cursor-pointer"
           >
+            <option value="">All Types</option>
             {availableQuestionType.map(type => (
               <option key={type.id} value={type.id}>{type.name}</option>
             ))}
@@ -219,13 +350,51 @@ const QuestionsPage = () => {
         </div>
       </div>
 
-      {allQuestions.length > 0 ? (
-        <div className="overflow-x-auto">
-          <Table headers={tableHeaders} rows={tableRows} />
+      {/* Display active filters */}
+      {(selectedSession || selectedTerm || selectedClass || selectedQuestionType) && (
+        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-sm font-medium text-gray-700">Active Filters:</span>
+            {selectedSession && (
+              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                Session: {getFilterDisplayNames().sessionName}
+              </span>
+            )}
+            {selectedClass && (
+              <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                Class: {getFilterDisplayNames().className}
+              </span>
+            )}
+            {selectedTerm && (
+              <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                Term: {getFilterDisplayNames().termName}
+              </span>
+            )}
+            {selectedQuestionType && (
+              <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                Type: {getFilterDisplayNames().typeName}
+              </span>
+            )}
+            <button
+              onClick={handleClearAllFilters}
+              className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full hover:bg-red-200 transition-colors"
+            >
+              Clear All
+            </button>
+          </div>
         </div>
+      )}
+
+      {questions.length > 0 ? (
+        <>
+          <div className="overflow-x-auto">
+            <Table headers={tableHeaders} rows={tableRows} />
+          </div>
+          {renderPagination()}
+        </>
       ) : (
         <p className="text-center text-gray-600 py-8">
-          No questions found for the selected session ({selectedSession}) and term ({selectedTerm}).
+          No questions found for the selected filters.
         </p>
       )}
        

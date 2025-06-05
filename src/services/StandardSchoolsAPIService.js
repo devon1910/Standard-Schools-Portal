@@ -1,9 +1,32 @@
 import API from "./API";
 
-
 const apiUrl = import.meta.env.VITE_API_URL;
 
-export const getDashboardData = () => API.get(`${apiUrl}genericData`);
+export const getDashboardData = (filters={}) => {
+     const params = new URLSearchParams();
+        
+        if (filters.sessionId) {
+            params.append('sessionId', filters.sessionId);
+        }
+        if (filters.termId) {
+            params.append('termId', filters.termId);
+        }
+        if (filters.classId) {
+            params.append('classId', filters.classId);
+        }
+        if (filters.questionType) {
+            params.append('questionType', filters.questionType);
+        }
+        if (filters.page) {
+            params.append('page', filters.page);
+        }
+        if (filters.pageSize) {
+            params.append('pageSize', filters.pageSize);
+        }
+        
+        const queryString = params.toString();
+        return API.get(`${apiUrl}genericData${queryString ? `?${queryString}` : ''}`);
+} 
 
 export const submitQuestionData = (formData) => API.post(`${apiUrl}questions`, formData);
 
