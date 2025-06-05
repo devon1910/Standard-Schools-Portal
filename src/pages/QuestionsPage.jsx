@@ -21,7 +21,8 @@ const QuestionsPage = () => {
   const [availableTerms,setAvailableTerms] = useState([]);
   const availableQuestionType=[{id:0, name:'CA'},{id:1, name: 'Exam'}];
   const [allQuestions, setAllQuestions] = useState([]);
- 
+  const [allSubjects, setAllSUbjects] = useState([]);
+  const [allClassTypes, setAllClassTypes] = useState([]);
  
 
     useEffect(() => {
@@ -32,6 +33,8 @@ const QuestionsPage = () => {
             setAvailableClasses(data.data.classes)
             setAvailableTerms(data.data.terms)
             setAllQuestions(data.data.questions)
+            setAllSUbjects(data.data.subjects)
+            setAllClassTypes(data.data.classTypes)
 
         }).catch((error) => {
             console.log(error)
@@ -90,8 +93,6 @@ const QuestionsPage = () => {
     console.log('Form Submitted:', data);
     closeModal();
   };
-
-  console.log("availableSessions: ",availableSessions)
 
   if (isLoading) {
   return (
@@ -193,9 +194,17 @@ const QuestionsPage = () => {
           No questions found for the selected session ({selectedSession}) and term ({selectedTerm}).
         </p>
       )}
-
+       
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingQuestion ? 'Edit Question' : 'Add New Question'}>
-        <QuestionForm onSubmit={handleFormSubmit} initialData={editingQuestion} defaultSession={selectedSession} defaultTerm={selectedTerm} />
+        <QuestionForm 
+        onSubmit={handleFormSubmit} 
+        initialData={editingQuestion} 
+        defaultSession={selectedSession} 
+        defaultTerm={selectedTerm}
+        allSubjects={allSubjects}
+        allClassTypes={allClassTypes}
+        availableClasses={availableClasses} />
+        
       </Modal>
     </div>
   );
