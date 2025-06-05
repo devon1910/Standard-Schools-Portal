@@ -9,11 +9,11 @@ const QuestionForm = ({
   availableClasses,
 }) => {
   const [formData, setFormData] = useState({
-    subjectId: "",
+    subjectId: 0,
     classId: 0,
-    type: "0", // 'CA' or 'Exam'
-    termId: "1st", // Default to current selected term
-    sessionId: "", // Default to current selected session
+    type: 0, // 'CA' or 'Exam'
+    termId: 0, // Default to current selected term
+    sessionId: 0, // Default to current selected session
     questionText: "",
   });
 
@@ -62,7 +62,6 @@ const QuestionForm = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
     onSubmit(formData);
   };
 

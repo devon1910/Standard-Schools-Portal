@@ -5,7 +5,7 @@ import Modal from '../components/Modal';
 
 // Optional: Import icons if you install react-icons
 import { FaEdit, FaTrashAlt, FaPlus } from 'react-icons/fa';
-import { getDashboardData, submitQuestionData } from '../services/StandardSchoolsAPIService';
+import { deleteQuestionData, getDashboardData, submitQuestionData } from '../services/StandardSchoolsAPIService';
 
 const QuestionsPage = () => {
     const[isLoading, setIsLoading] = useState(false);
@@ -56,6 +56,17 @@ const QuestionsPage = () => {
 
   const tableHeaders = ['Subject', 'Question','Actions'];
 
+  const handleDeleteQuestion = (questionId) => {  
+    setIsLoading(true)
+    if (window.confirm('Are you sure you want to delete this question?')) {
+      deleteQuestionData(questionId).then((response) => {
+        GetDashboardGenericData();
+      }).catch((error) => {
+        console.log(error)
+      })
+    }
+
+  }
 
   const tableRows = allQuestions.map(q => ({
     id: q.id,
@@ -63,7 +74,16 @@ const QuestionsPage = () => {
     actions: (
       <div className="flex space-x-2">
         <button
-          onClick={() => { setEditingQuestion(q); setIsModalOpen(true); }}
+          onClick={() => { setEditingQuestion(
+            {
+            id:q.id, 
+            questionText:q.questionText,
+            subjectId:q.subject.id, 
+            classId:q.class.id,
+            sessionId:q.session.id,
+            termId:q.term.id,
+            type:q.type
+            }); setIsModalOpen(true); }}
           className="px-3 py-1 bg-primary-orange text-white rounded hover:bg-opacity-80 transition-colors cursor-pointer flex items-center justify-center space-x-1"
           title="Edit Question"
         >
@@ -71,7 +91,7 @@ const QuestionsPage = () => {
           <span>Edit</span>
         </button>
         <button
-          onClick={() => alert(`Delete question ${q.id}`)} // Replace with actual delete logic
+          onClick={() => handleDeleteQuestion(q.id)} 
           className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors cursor-pointer flex items-center justify-center space-x-1"
           title="Delete Question"
         >
@@ -102,6 +122,7 @@ const QuestionsPage = () => {
 
     }).catch((error) => {
       console.error('Error: ', error);
+      setIsLoading(false)
     })
     closeModal();
      
