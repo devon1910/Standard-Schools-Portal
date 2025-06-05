@@ -1,0 +1,12 @@
+
+@import "tailwindcss";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@theme {
+  --color-primary-orange: #f0a150;
+  --color-dark-background: #1a1a1a;
+  --color-light-background: #ffffff;
+}
