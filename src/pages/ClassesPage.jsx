@@ -56,8 +56,9 @@ const ClassesPage = () => {
     setEditingClass(null);
   };
 
+  let sessionId= availableSessions.filter((session) => session.name === selectedSession)[0].id
   const handleClassFormSubmit = async (formData) => {
-    formData.sessionId = availableSessions.filter((session) => session.name === selectedSession)[0].id
+    formData.sessionId = sessionId
     
     await submitClassData(formData).then((response)=>{
       console.log('response: ', response);
@@ -120,7 +121,7 @@ const ClassesPage = () => {
               classData={cls}
               onEdit={handleEditClassClick}
               onDelete={handleDeleteClass}
-              selectedSession={selectedSession}
+              selectedSession={sessionId}
               selectedTerm={selectedTerm}
             />
           ))

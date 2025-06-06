@@ -32,5 +32,9 @@ export const submitQuestionData = (formData) => API.post(`${apiUrl}questions`, f
 
 export const submitClassData = (formData) => API.post(`${apiUrl}classes`, formData);
 
+export const submitStudentData = (formData) => API.post(`${apiUrl}students`, formData);
+
 export const deleteQuestionData = (id) => API.delete(`${apiUrl}questions/${id}`);
 export const deleteClassesData = (id) => API.delete(`${apiUrl}classes/${id}`);
+
+export const getStudentsData = (classId,sessionId) => API.get(`${apiUrl}students?classId=${classId}&sessionId=${sessionId}`);

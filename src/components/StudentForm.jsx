@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
-const StudentForm = ({ onSubmit, initialData, defaultSession, defaultTerm }) => {
+const StudentForm = ({ onSubmit, classId, terms, sessions,initialData, defaultSession, defaultTerm }) => {
   const [formData, setFormData] = useState({
     name: '',
-    admissionNumber: '',
-    term: defaultTerm || '1st',
-    session: defaultSession || '',
+    id: 0,
+    classId:classId,
+    termId: defaultTerm || 0,
+    sessionId: defaultSession || 0,
     feePaid: false, // New field
     balance: 0,     // New field
   });
@@ -16,14 +17,15 @@ const StudentForm = ({ onSubmit, initialData, defaultSession, defaultTerm }) => 
     } else {
       setFormData({
         name: '',
-        admissionNumber: '',
-        term: defaultTerm || '1st',
-        session: defaultSession || '',
+        id: 0,
+        classId:classId,
+        termId: defaultTerm || 0,
+        sessionId: defaultSession || 0,
         feePaid: false,
         balance: 0,
       });
     }
-  }, [initialData, defaultSession, defaultTerm]);
+  }, [initialData, defaultSession, defaultTerm, classId]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -57,52 +59,45 @@ const StudentForm = ({ onSubmit, initialData, defaultSession, defaultTerm }) => 
       </div>
 
       <div>
-        <label htmlFor="admissionNumber" className="block text-sm font-medium text-gray-700 mb-1">
-          Admission Number
-        </label>
-        <input
-          type="text"
-          id="admissionNumber"
-          name="admissionNumber"
-          value={formData.admissionNumber}
-          onChange={handleChange}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
-          placeholder="e.g., SN001"
-          required
-        />
-      </div>
-
-      <div>
         <label htmlFor="studentSession" className="block text-sm font-medium text-gray-700 mb-1">
           Session
         </label>
-        <input
-          type="text"
+        <select
           id="studentSession"
           name="session"
-          value={formData.session}
-          readOnly
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed sm:text-sm"
-          required
-        />
+          value={formData.sessionId}
+          onChange={handleChange}
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 sm:text-sm" 
+          required>
+          <option value="">Select Session</option>
+          {sessions.map((session) => (
+            <option key={session.id} value={session.id}>
+              {session.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>
         <label htmlFor="studentTerm" className="block text-sm font-medium text-gray-700 mb-1">
           Term
         </label>
-        <input
-          type="text"
-          id="studentTerm"
-          name="term"
-          value={formData.term}
-          readOnly
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 cursor-not-allowed sm:text-sm"
-          required
-        />
+        <select 
+        id='termId'
+        name='termId'
+        value={formData.termId}
+        onChange={handleChange}
+        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 sm:text-sm"
+        required>
+          <option value="">Select Term</option>
+          {terms.map((term) => (
+            <option key={term.id} value={term.id}>
+              {term.name}
+            </option>
+          ))}
+        </select>
       </div>
-
-      {/* New Fields: Fee Status and Balance */}
+ 
       <div className="flex items-center space-x-2">
         <input
           type="checkbox"
@@ -133,7 +128,6 @@ const StudentForm = ({ onSubmit, initialData, defaultSession, defaultTerm }) => 
           required
         />
       </div>
-      {/* End New Fields */}
 
       <div className="flex justify-end">
         <button
