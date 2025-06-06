@@ -18,11 +18,18 @@ const ClassesPage = () => {
   const [selectedSession, setSelectedSession] = useState('2024/2025');
   const [selectedTerm, setSelectedTerm] = useState('1st');
 
-  const availableSessions =dashboardData.sessions;
-  const classesData= dashboardData.classes;
-
-  const classTypes= dashboardData.classTypes
+  const availableSessions = dashboardData.sessions;
+  const classesData = dashboardData.classes;
+  const classTypes = dashboardData.classTypes;
   
+  // Filter classes by selected session
+  const filteredClasses = classesData.filter(cls => {
+    // Find the selected session object
+    const selectedSessionObj = availableSessions.find(session => session.name === selectedSession);
+    
+    // Filter classes that belong to the selected session
+    return cls.sessionId + 1 === selectedSessionObj?.id;
+  });
 
   const handleAddClassClick = () => {
     setEditingClass(null);
@@ -58,7 +65,7 @@ const ClassesPage = () => {
     }).catch(error => console.log(error));
     
     closeModal();
-    console.log('Class Form Submitted:', { ...formData, session: selectedSession, term: selectedTerm });
+
   };
 
    if (isLoading) {
@@ -97,7 +104,7 @@ const ClassesPage = () => {
             className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm cursor-pointer"
           >
             {availableSessions.map(session => (
-              <option key={session.id} value={session.id}>{session.name}</option>
+              <option key={session.id} value={session.name}>{session.name}</option>
             ))}
           </select>
         </div>
@@ -106,16 +113,22 @@ const ClassesPage = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {classesData.map((cls) => (
-          <ClassCard
-            key={cls.id}
-            classData = {cls}
-            onEdit={handleEditClassClick}
-            onDelete={handleDeleteClass}
-            selectedSession={selectedSession}
-            selectedTerm={selectedTerm}
-          />
-        ))}
+        {filteredClasses.length > 0 ? (
+          filteredClasses.map((cls) => (
+            <ClassCard
+              key={cls.id}
+              classData={cls}
+              onEdit={handleEditClassClick}
+              onDelete={handleDeleteClass}
+              selectedSession={selectedSession}
+              selectedTerm={selectedTerm}
+            />
+          ))
+        ) : (
+          <div className="col-span-full text-center py-8">
+            <p className="text-gray-500 text-lg">No classes found for the selected session.</p>
+          </div>
+        )}
       </div>
 
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingClass ? 'Edit Class' : 'Add New Class'}>

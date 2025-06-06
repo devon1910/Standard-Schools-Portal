@@ -29,15 +29,7 @@ const ClassCard = ({ classData, onEdit, onDelete, selectedSession, selectedTerm 
           <FaEdit className="inline-block" />
           <span>Edit</span>
         </button>
-        {/* Delete Button */}
-        <button
-          onClick={() => onDelete(id)}
-          className="flex-grow text-center px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors cursor-pointer flex items-center justify-center space-x-1"
-          title="Delete Class"
-        >
-          <FaTrashAlt className="inline-block" />
-          <span>Delete</span>
-        </button>
+        
       </div>
     </div>
   );
