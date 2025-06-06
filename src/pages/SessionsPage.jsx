@@ -1,23 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Modal from '../components/Modal';
 import Table from '../components/Table'; // Re-use the existing Table component
 
 import { FaEdit, FaPlus, FaTrashAlt } from 'react-icons/fa';
 import SessionForm from '../components/SessionsForm';
+import { useDashboardData } from '../layouts/MainLayout';
+import { deleteSessionData, submitSessionData } from '../services/StandardSchoolsAPIService';
 
 const SessionsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState(null); // For future edit functionality
 
-  // Dummy data for existing sessions (replace with backend data later)
-  const [sessions, setSessions] = useState([
-    { id: 1, name: '2024/2025' },
-    { id: 2, name: '2023/2024' },
-    { id: 3, name: '2022/2023' },
-  ]);
+  const { dashboardData, isLoading} = useDashboardData();
+
+  const availableSessions = dashboardData.sessions;
 
   const tableHeaders = ['Session Name', 'Actions'];
-  const tableRows = sessions.map(session => ({
+  const tableRows = availableSessions.map(session => ({
     id: session.id,
     data: [session.name],
     actions: (
@@ -31,7 +30,7 @@ const SessionsPage = () => {
           <span>Edit</span>
         </button>
         <button
-          onClick={() => alert(`Delete session ${session.name} (ID: ${session.id})`)}
+          onClick={() => handleDeleteSession(session.id)}
           className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors cursor-pointer flex items-center justify-center space-x-1"
           title="Delete Session"
         >
@@ -54,15 +53,31 @@ const SessionsPage = () => {
   };
 
   const handleSessionFormSubmit = (formData) => {
-    console.log('Session Form Submitted:', formData);
-    // In a real application, you'd send this to your backend API.
-    // For UI, we'll just add it to our local dummy state.
-    setSessions(prevSessions => [
-      ...prevSessions,
-      { id: prevSessions.length ? Math.max(...prevSessions.map(s => s.id)) + 1 : 1, name: formData.name }
-    ].sort((a,b) => b.name.localeCompare(a.name))); // Sort descending by session name (e.g., 2024/2025 first)
+    console.log('Form Data:', formData);
+   submitSessionData(formData).then((response) => {
+     console.log('response: ', response);
+     window.location.reload();
+   })
+
     closeModal();
   };
+
+  const handleDeleteSession = (sessionId) => {
+    if (window.confirm('Are you sure you want to delete this session?')) {
+       deleteSessionData(sessionId).then((response) => {
+      console.log('response: ', response);
+      window.location.reload();
+    })
+    }
+   
+  }
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-primary-orange"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
@@ -78,7 +93,7 @@ const SessionsPage = () => {
         </button>
       </div>
 
-      {sessions.length > 0 ? (
+      {availableSessions.length > 0 ? (
         <div className="overflow-x-auto">
           <Table headers={tableHeaders} rows={tableRows} />
         </div>

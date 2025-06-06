@@ -1,19 +1,28 @@
 import React, { useState, useEffect } from 'react';
 
 const SessionForm = ({ onSubmit, initialData }) => {
-  const [sessionName, setSessionName] = useState('');
+  const [formData, setFormData] = useState({
+    
+    id:0,
+    name:''
+  });
 
   useEffect(() => {
     if (initialData) {
-      setSessionName(initialData.name);
+      setFormData(initialData);
     } else {
-      setSessionName('');
+      setFormData({
+        id:0,
+        name:''
+      });
     }
   }, [initialData]);
 
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit({ name: sessionName });
+    console.log('Form Data before:', formData);
+    onSubmit(formData);
   };
 
   return (
@@ -26,8 +35,8 @@ const SessionForm = ({ onSubmit, initialData }) => {
           type="text"
           id="sessionName"
           name="sessionName"
-          value={sessionName}
-          onChange={(e) => setSessionName(e.target.value)}
+          value={formData.name}
+          onChange={(e) =>  setFormData({id:formData.id,name:e.target.value})}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
           placeholder="e.g., 2024/2025"
           required
