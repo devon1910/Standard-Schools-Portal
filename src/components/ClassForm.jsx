@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
-const ClassForm = ({ onSubmit, initialData, classTypes }) => {
+const ClassForm = ({ onSubmit, initialData, classTypes, selectedSession }) => {
   const [formData, setFormData] = useState({
     id:0,
     name: '',
     classTeacher: '',
     classTypeId: 0,
+    sessionId: 0
   });
 
   useEffect(() => {
@@ -13,8 +14,11 @@ const ClassForm = ({ onSubmit, initialData, classTypes }) => {
       setFormData(initialData);
     } else {
       setFormData({
+        id:0,
         name: '',
         classTeacher: '',
+        classTypeId: 0,
+        sessionId: 0
       });
     }
   }, [initialData]);
@@ -38,9 +42,10 @@ const ClassForm = ({ onSubmit, initialData, classTypes }) => {
         <select
          className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
          required
-         id="classType"
-         name="classType"
+         id="classTypeId"
+         name="classTypeId"
          value={formData.classTypeId}
+         onChange={handleChange}
         >
         <option key={0} value="0">Select a Class Type </option>
 
@@ -83,10 +88,24 @@ const ClassForm = ({ onSubmit, initialData, classTypes }) => {
         />
       </div>
 
+      <div>
+        <label htmlFor="classTeacher" className="block text-sm font-medium text-gray-700 mb-1">
+          Academic Session
+        </label>
+        <input
+          type="text"
+          id="session"
+          name="session"
+          value={selectedSession}
+          readOnly
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
+        />
+      </div>
+
       <div className="flex justify-end">
         <button
           type="submit"
-          className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-orange hover:bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-orange transition-colors"
+          className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-orange hover:bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-orange transition-colors cursor-pointer"
         >
           {initialData ? 'Update Class' : 'Add Class'}
         </button>

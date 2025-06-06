@@ -12,10 +12,7 @@ const ClassesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState(null);
   
-  const { dashboardData} = useDashboardData();
-
-  console.log("dashboardData: ",dashboardData);
-
+  const { dashboardData, isLoading} = useDashboardData();
   
 
   const [selectedSession, setSelectedSession] = useState('2024/2025');
@@ -32,10 +29,16 @@ const ClassesPage = () => {
     setIsModalOpen(true);
   };
 
+   const handleEditClassClick = (classesData) => {
+    setEditingClass(classesData)
+    setIsModalOpen(true);
+  };
+
   const handleDeleteClass = async (classId) => {
     if (window.confirm('Are you sure you want to delete this class?')) {
        await deleteClassesData(classId).then((response)=>{
-        console.log('delete response: ', response);
+        console.log('response: ', response);
+        window.location.reload();
        })
     }
 
@@ -47,14 +50,24 @@ const ClassesPage = () => {
   };
 
   const handleClassFormSubmit = async (formData) => {
-    console.log('formData: ', formData);
+    formData.sessionId = availableSessions.filter((session) => session.name === selectedSession)[0].id
+    
     await submitClassData(formData).then((response)=>{
       console.log('response: ', response);
+      window.location.reload();
     }).catch(error => console.log(error));
     
     closeModal();
     console.log('Class Form Submitted:', { ...formData, session: selectedSession, term: selectedTerm });
   };
+
+   if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-primary-orange"></div>
+      </div>
+    );
+  }
   
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
@@ -97,7 +110,7 @@ const ClassesPage = () => {
           <ClassCard
             key={cls.id}
             classData = {cls}
-            onEdit={handleClassFormSubmit}
+            onEdit={handleEditClassClick}
             onDelete={handleDeleteClass}
             selectedSession={selectedSession}
             selectedTerm={selectedTerm}
@@ -106,7 +119,11 @@ const ClassesPage = () => {
       </div>
 
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingClass ? 'Edit Class' : 'Add New Class'}>
-        <ClassForm onSubmit={handleClassFormSubmit} initialData={editingClass} classTypes={classTypes} />
+        <ClassForm 
+        onSubmit={handleClassFormSubmit} 
+        initialData={editingClass} 
+        classTypes={classTypes}
+        selectedSession={selectedSession} />
       </Modal>
     </div>
   );
