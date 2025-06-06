@@ -6,7 +6,7 @@ import Modal from '../components/Modal';
 
 // Optional: You could import icons here if you install a library like react-icons
 import { FaEdit, FaPlus, FaTrashAlt } from 'react-icons/fa'; // Example icons
-import { getStudentsData, submitStudentData } from '../services/StandardSchoolsAPIService';
+import { deleteStudentData, getStudentsData, submitStudentData } from '../services/StandardSchoolsAPIService';
 import { useDashboardData } from '../layouts/MainLayout';
 
 const StudentsPage = () => {
@@ -65,7 +65,7 @@ const StudentsPage = () => {
           <span>Edit</span>
         </button>
         <button
-          onClick={() => alert(`Delete student ${s.name} (ID: ${s.id})`)} // Replace with actual delete logic
+          onClick={() => handleDeleteStudent(s.id)} // Replace with actual delete logic
           className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors cursor-pointer flex items-center justify-center space-x-1"
           title="Delete Student"
         >
@@ -89,11 +89,21 @@ const StudentsPage = () => {
   const handleStudentFormSubmit = (formData) => {
      submitStudentData(formData).then((response) => {
        console.log('response: ', response);
-       
+        window.location.reload();
+
      }).catch(error => console.log(error));
     closeModal();
   };
 
+  const handleDeleteStudent = (studentId) => {
+    if (window.confirm('Are you sure you want to delete this student record?')) {
+      // Replace with actual delete logic
+      deleteStudentData(studentId).then((response) => {
+        console.log('response: ', response);
+        window.location.reload();
+      })
+  }
+}
    if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
