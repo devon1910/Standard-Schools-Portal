@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 
-const ClassForm = ({ onSubmit, initialData }) => {
+const ClassForm = ({ onSubmit, initialData, classTypes }) => {
   const [formData, setFormData] = useState({
+    id:0,
     name: '',
     classTeacher: '',
+    classTypeId: 0,
   });
 
   useEffect(() => {
@@ -29,6 +31,27 @@ const ClassForm = ({ onSubmit, initialData }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
+       <div>
+        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+          Class Type
+        </label>
+        <select
+         className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
+         required
+         id="classType"
+         name="classType"
+         value={formData.classTypeId}
+        >
+        <option key={0} value="0">Select a Class Type </option>
+
+          {classTypes.map((classType) => (
+            <option key={classType.id} value={classType.id}>
+              {classType.name}
+            </option>
+          ))} 
+        </select>
+      
+      </div>
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
           Class Name

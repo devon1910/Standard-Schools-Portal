@@ -4,8 +4,8 @@ import { Link } from 'react-router-dom';
 import { FaEye, FaEdit, FaTrashAlt } from 'react-icons/fa';
 
 const ClassCard = ({ classData, onEdit, onDelete, selectedSession, selectedTerm }) => {
-  const { id, name, classTeacher } = classData;
 
+  const {id, name, classTeacher, classTypeId} = classData
   return (
     <div className="bg-gray-50 rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow duration-200">
       <h3 className="text-xl font-semibold text-gray-800 mb-2">{name}</h3>

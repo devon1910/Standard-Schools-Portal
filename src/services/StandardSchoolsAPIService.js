@@ -30,4 +30,7 @@ export const getDashboardData = (filters={}) => {
 
 export const submitQuestionData = (formData) => API.post(`${apiUrl}questions`, formData);
 
+export const submitClassData = (formData) => API.post(`${apiUrl}classes`, formData);
+
 export const deleteQuestionData = (id) => API.delete(`${apiUrl}questions/${id}`);
+export const deleteClassesData = (id) => API.delete(`${apiUrl}classes/${id}`);

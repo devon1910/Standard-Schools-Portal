@@ -1,108 +1,60 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
+import { FaEdit, FaTrashAlt, FaPlus, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import QuestionForm from '../components/QuestionForm';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
-
-// Optional: Import icons if you install react-icons
-import { FaEdit, FaTrashAlt, FaPlus, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import { deleteQuestionData, getDashboardData, submitQuestionData } from '../services/StandardSchoolsAPIService';
+import { deleteQuestionData, submitQuestionData } from '../services/StandardSchoolsAPIService';
+import { useDashboardData } from '../layouts/MainLayout';
+// Import the custom hook
 
 const QuestionsPage = () => {
-    const[isLoading, setIsLoading] = useState(false);
+  // Get all data and functions from context
+  const {
+    dashboardData,
+    availableQuestionType,
+    isLoading,
+    filters,
+    updateFilters,
+    clearAllFilters,
+    refetchData,
+    getFilterDisplayNames
+  } = useDashboardData();
+
+  // Local state for modal and editing
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState(null);
 
-  const [selectedSession, setSelectedSession] = useState('');
-  const [selectedTerm, setSelectedTerm] = useState('');
-  const [selectedClass, setSelectedClass] = useState('');
-  const [selectedQuestionType, setSelectedQuestionType] = useState('');
+  const tableHeaders = ['Subject', 'Question', 'Actions'];
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
-  const [totalRecords, setTotalRecords] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-
-  const [availableSessions, setAvailableSessions] = useState([]);
-  const [availableClasses, setAvailableClasses] = useState([]);
-  const [availableTerms,setAvailableTerms] = useState([]);
-  const availableQuestionType=[{id:0, name:'CA'},{id:1, name: 'Exam'}];
-  const [questions, setQuestions] = useState([]);
-  const [allSubjects, setAllSUbjects] = useState([]);
-  const [allClassTypes, setAllClassTypes] = useState([]);
- 
-    const GetDashboardGenericData = async () => {   
-        const filters = {
-            sessionId: selectedSession || null,
-            termId: selectedTerm || null,
-            classId: selectedClass || null,
-            questionType: selectedQuestionType ? availableQuestionType[parseInt(selectedQuestionType)].name : null,
-            page: currentPage,
-            pageSize: pageSize
-        };
-
-        getDashboardData(filters).then((data) => {
-          setAvailableSessions(data.data.sessions)
-          setAvailableClasses(data.data.classes)
-          setAvailableTerms(data.data.terms)
-          setQuestions(data.data.questions.items || data.data.questions)
-          setTotalRecords(data.data.questions.totalRecords || data.data.questions.length)
-          setTotalPages(data.data.questions.totalPages || Math.ceil((data.data.questions.length || 0) / pageSize))
-          setAllSUbjects(data.data.subjects)
-          setAllClassTypes(data.data.classTypes)
-          
-        }).catch((error) => {
-            console.log(error)
-        }).finally(() => {
-            setIsLoading(false);
-        })
-
-    }
-
-    useEffect(() => {
-        setIsLoading(true)
-        setCurrentPage(1); // Reset to first page when filters change
-        GetDashboardGenericData();
-    },[selectedSession, selectedTerm, selectedClass, selectedQuestionType])
-
-    useEffect(() => {
-        setIsLoading(true)
-        GetDashboardGenericData();
-    },[currentPage])
-
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const tableHeaders = ['Subject', 'Question','Actions'];
-
-  const handleDeleteQuestion = (questionId) => {  
-    setIsLoading(true)
+  const handleDeleteQuestion = async (questionId) => {
     if (window.confirm('Are you sure you want to delete this question?')) {
-      deleteQuestionData(questionId).then((response) => {
-        GetDashboardGenericData();
-      }).catch((error) => {
-        console.log(error)
-        setIsLoading(false)
-      })
-    } else {
-      setIsLoading(false)
+      try {
+        await deleteQuestionData(questionId);
+        refetchData(); // Refetch data after deletion
+      } catch (error) {
+        console.error('Error deleting question:', error);
+      }
     }
-  }
+  };
 
-  const tableRows = questions.map(q => ({
+  const tableRows = dashboardData.questions.items.map(q => ({
     id: q.id,
-    data: [q.subject.name,q.questionText],
+    data: [q.subject.name, q.questionText],
     actions: (
       <div className="flex space-x-2">
         <button
-          onClick={() => { setEditingQuestion(
-            {
-            id:q.id, 
-            questionText:q.questionText,
-            subjectId:q.subject.id, 
-            classId:q.class.id,
-            sessionId:q.session.id,
-            termId:q.term.id,
-            type:q.type
-            }); setIsModalOpen(true); }}
+          onClick={() => {
+            setEditingQuestion({
+              id: q.id,
+              questionText: q.questionText,
+              subjectId: q.subject.id,
+              classId: q.class.id,
+              sessionId: q.session.id,
+              termId: q.term.id,
+              type: q.type
+            });
+            setIsModalOpen(true);
+          }}
           className="px-3 py-1 bg-primary-orange text-white rounded hover:bg-opacity-80 transition-colors cursor-pointer flex items-center justify-center space-x-1"
           title="Edit Question"
         >
@@ -110,7 +62,7 @@ const QuestionsPage = () => {
           <span>Edit</span>
         </button>
         <button
-          onClick={() => handleDeleteQuestion(q.id)} 
+          onClick={() => handleDeleteQuestion(q.id)}
           className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors cursor-pointer flex items-center justify-center space-x-1"
           title="Delete Question"
         >
@@ -131,47 +83,27 @@ const QuestionsPage = () => {
     setEditingQuestion(null);
   };
 
-  const handleFormSubmit = (data) => {
-     setIsLoading(true)
-
-    submitQuestionData(data).then((response) => {
-      console.log('Response: ', response);
-      GetDashboardGenericData();
-    
-
-    }).catch((error) => {
-      console.error('Error: ', error);
-      setIsLoading(false)
-    })
-    closeModal();
-     
-  };
-
-  // Get current filter display names for the no questions message
-  const getFilterDisplayNames = () => {
-    const sessionName = availableSessions.find(s => s.id.toString() === selectedSession)?.name || selectedSession;
-    const termName = availableTerms.find(t => t.id.toString() === selectedTerm)?.name || selectedTerm;
-    const className = availableClasses.find(c => c.id.toString() === selectedClass)?.name || selectedClass;
-    const typeName = availableQuestionType.find(t => t.id.toString() === selectedQuestionType)?.name || selectedQuestionType;
-    
-    return { sessionName, termName, className, typeName };
-  };
-
-  const handleClearAllFilters = () => {
-    setSelectedSession('');
-    setSelectedTerm('');
-    setSelectedClass('');
-    setSelectedQuestionType('');
-    setCurrentPage(1);
+  const handleFormSubmit = async (data) => {
+    try {
+      await submitQuestionData(data);
+      refetchData(); // Refetch data after submission
+      closeModal();
+    } catch (error) {
+      console.error('Error submitting question:', error);
+    }
   };
 
   const handlePageChange = (newPage) => {
+    const totalPages = dashboardData.questions.totalPages;
     if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
+      updateFilters({ page: newPage });
     }
   };
 
   const renderPagination = () => {
+    const { totalPages, totalRecords } = dashboardData.questions;
+    const { page: currentPage, pageSize } = filters;
+    
     if (totalPages <= 1) return null;
 
     const pageNumbers = [];
@@ -256,12 +188,12 @@ const QuestionsPage = () => {
   };
 
   if (isLoading) {
-  return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-primary-orange"></div>
-    </div>
-  );
-}
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-primary-orange"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
@@ -286,12 +218,12 @@ const QuestionsPage = () => {
           <select
             id="session-filter"
             name="session"
-            value={selectedSession}
-            onChange={(e) => setSelectedSession(e.target.value)}
+            value={filters.sessionId}
+            onChange={(e) => updateFilters({ sessionId: e.target.value })}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm cursor-pointer"
           >
             <option value="">All Sessions</option>
-            {availableSessions.map(session => (
+            {dashboardData.sessions.map(session => (
               <option key={session.id} value={session.id}>{session.name}</option>
             ))}
           </select>
@@ -304,42 +236,44 @@ const QuestionsPage = () => {
           <select
             id="class-filter"
             name="class"
-            value={selectedClass}
-            onChange={(e) => setSelectedClass(e.target.value)}
+            value={filters.classId}
+            onChange={(e) => updateFilters({ classId: e.target.value })}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm cursor-pointer"
           >
             <option value="">All Classes</option>
-            {availableClasses.map(classItem => (
+            {dashboardData.classes.map(classItem => (
               <option key={classItem.id} value={classItem.id}>{classItem.name}</option>
             ))}
           </select>
         </div>
-         <div className="flex-1">
+
+        <div className="flex-1">
           <label htmlFor="term-filter" className="block text-sm font-medium text-gray-700 mb-1">
             Select Term
           </label>
           <select
             id="term-filter"
             name="term"
-            value={selectedTerm}
-            onChange={(e) => setSelectedTerm(e.target.value)}
+            value={filters.termId}
+            onChange={(e) => updateFilters({ termId: e.target.value })}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm cursor-pointer"
           >
             <option value="">All Terms</option>
-            {availableTerms.map(term => (
+            {dashboardData.terms.map(term => (
               <option key={term.id} value={term.id}>{term.name}</option>
             ))}
           </select>
         </div>
-         <div className="flex-1">
+
+        <div className="flex-1">
           <label htmlFor="questionType-filter" className="block text-sm font-medium text-gray-700 mb-1">
             Select Questions Type
           </label>
           <select
             id="questionType-filter"
             name="questionType"
-            value={selectedQuestionType}
-            onChange={(e) => setSelectedQuestionType(e.target.value)}
+            value={filters.questionType}
+            onChange={(e) => updateFilters({ questionType: e.target.value })}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm cursor-pointer"
           >
             <option value="">All Types</option>
@@ -351,32 +285,32 @@ const QuestionsPage = () => {
       </div>
 
       {/* Display active filters */}
-      {(selectedSession || selectedTerm || selectedClass || selectedQuestionType) && (
+      {(filters.sessionId || filters.termId || filters.classId || filters.questionType) && (
         <div className="mb-4 p-3 bg-gray-50 rounded-lg">
           <div className="flex flex-wrap gap-2 items-center">
             <span className="text-sm font-medium text-gray-700">Active Filters:</span>
-            {selectedSession && (
+            {filters.sessionId && (
               <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
                 Session: {getFilterDisplayNames().sessionName}
               </span>
             )}
-            {selectedClass && (
+            {filters.classId && (
               <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
                 Class: {getFilterDisplayNames().className}
               </span>
             )}
-            {selectedTerm && (
+            {filters.termId && (
               <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
                 Term: {getFilterDisplayNames().termName}
               </span>
             )}
-            {selectedQuestionType && (
+            {filters.questionType && (
               <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
                 Type: {getFilterDisplayNames().typeName}
               </span>
             )}
             <button
-              onClick={handleClearAllFilters}
+              onClick={clearAllFilters}
               className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full hover:bg-red-200 transition-colors"
             >
               Clear All
@@ -385,7 +319,7 @@ const QuestionsPage = () => {
         </div>
       )}
 
-      {questions.length > 0 ? (
+      {dashboardData.questions.items.length > 0 ? (
         <>
           <div className="overflow-x-auto">
             <Table headers={tableHeaders} rows={tableRows} />
@@ -400,14 +334,14 @@ const QuestionsPage = () => {
        
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingQuestion ? 'Edit Question' : 'Add New Question'}>
         <QuestionForm 
-        onSubmit={handleFormSubmit} 
-        initialData={editingQuestion} 
-        allSessions={availableSessions} 
-        allTerms={availableTerms}
-        allSubjects={allSubjects}
-        allClassTypes={allClassTypes}
-        availableClasses={availableClasses} />
-        
+          onSubmit={handleFormSubmit} 
+          initialData={editingQuestion} 
+          allSessions={dashboardData.sessions} 
+          allTerms={dashboardData.terms}
+          allSubjects={dashboardData.subjects}
+          allClassTypes={dashboardData.classTypes}
+          availableClasses={dashboardData.classes} 
+        />
       </Modal>
     </div>
   );
