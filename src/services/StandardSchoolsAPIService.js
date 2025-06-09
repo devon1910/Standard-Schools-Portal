@@ -27,7 +27,6 @@ export const getDashboardData = (filters={}) => {
         const queryString = params.toString();
         return API.get(`${apiUrl}genericData${queryString ? `?${queryString}` : ''}`);
 } 
-
 export const submitQuestionData = (formData) => API.post(`${apiUrl}questions`, formData);
 
 export const submitClassData = (formData) => API.post(`${apiUrl}classes`, formData);
@@ -36,9 +35,12 @@ export const submitStudentData = (formData) => API.post(`${apiUrl}students`, for
 
 export const submitSessionData = (formData) => API.post(`${apiUrl}sessions`, formData);
 
+export const loginLogic = (formData) => API.post(`${apiUrl}login`, formData);
+
 export const deleteSessionData = (id) => API.delete(`${apiUrl}sessions/${id}`);
 export const deleteQuestionData = (id) => API.delete(`${apiUrl}questions/${id}`);
 export const deleteClassesData = (id) => API.delete(`${apiUrl}classes/${id}`);
 export const deleteStudentData = (id) => API.delete(`${apiUrl}students/${id}`);
 
 export const getStudentsData = (classId,sessionId) => API.get(`${apiUrl}students?classId=${classId}&sessionId=${sessionId}`);
+

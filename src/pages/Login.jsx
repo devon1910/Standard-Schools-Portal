@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { loginLogic } from '../services/StandardSchoolsAPIService';
 
 const Login = () => {
 
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: '',
   });
 
@@ -20,9 +21,17 @@ const Login = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    navigate('/questions'); // Redirect to questions page on successful login
-    // Handle login logic here
-    console.log('Login attempt with:', formData);
+    loginLogic(formData).then(response => {
+      if (response.status === 200) {
+        console.log('Login successful:', response.data);
+        localStorage.setItem('user', JSON.stringify(response.data.token));
+        navigate('/questions');
+      } else {
+        console.error('Login failed:', response);
+      }
+    }).catch(error => {
+      console.error('Error during login:', error);
+    });
 
   };
 
@@ -34,14 +43,14 @@ const Login = () => {
         
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="username">Username</label>
             <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
+              type="username"
+              id="username"
+              name="username"
+              value={formData.username}
               onChange={handleChange}
-              placeholder="Enter your email"
+              placeholder="Enter your username"
               required
             />
           </div>
