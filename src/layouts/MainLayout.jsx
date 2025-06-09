@@ -1,5 +1,6 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import { getDashboardData } from '../services/StandardSchoolsAPIService';
 import { FiLogOut } from 'react-icons/fi';
 
@@ -179,12 +180,11 @@ const MainLayout = ({ children }) => {
   ];
 
   const handleLogout = () => {
-
     if(window.confirm('Are you sure you want to logout?')) {
       localStorage.removeItem('token');
+      toast.success('Logged out successfully');
       navigate('/login');
     }
-    
   };
 
   return (

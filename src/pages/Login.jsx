@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from 'react-toastify';
 import { loginLogic } from "../services/StandardSchoolsAPIService";
 
 const Login = () => {
@@ -25,15 +26,15 @@ const Login = () => {
     loginLogic(formData)
       .then((response) => {
         if (response.status === 200) {
-          console.log("Login successful:", response.data);
+          toast.success('Login successful!');
           localStorage.setItem("token", JSON.stringify(response.data.token));  
           navigate("/questions");
         } else {
-          console.error("Login failed:", response);
+          toast.error('Login failed. Please check your credentials.');
         }
       })
       .catch((error) => {
-        console.error("Error during login:", error);
+        toast.error(error.response?.data?.message || 'An error occurred during login');
       }).finally(() => { setIsLoading(false)});
   };
 

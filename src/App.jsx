@@ -5,6 +5,8 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import MainLayout from "./layouts/MainLayout";
 import QuestionsPage from "./pages/QuestionsPage";
 import ClassesPage from "./pages/ClassesPage";
@@ -16,6 +18,18 @@ import "./App.css";
 function App() {
   return (
     <Router>
+      <ToastContainer
+        position="top-center"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
       <Routes>
         {/* Public routes - no MainLayout */}
         <Route path="/login" element={<Login />} />
@@ -46,7 +60,7 @@ function App() {
           }
         />
         <Route
-          path="/classes/:classId/students"
+          path="/students" 
           element={
             <MainLayout>
               <StudentsPage />

@@ -63,8 +63,8 @@ const StudentForm = ({ onSubmit, classId, terms, sessions,initialData, defaultSe
           Session
         </label>
         <select
-          id="studentSession"
-          name="session"
+          id="sessionId"
+          name="sessionId"
           value={formData.sessionId}
           onChange={handleChange}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 sm:text-sm" 

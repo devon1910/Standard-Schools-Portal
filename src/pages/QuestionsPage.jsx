@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'react-toastify';
 import { FaEdit, FaTrashAlt, FaPlus, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import QuestionForm from '../components/QuestionForm';
 import Table from '../components/Table';
@@ -30,8 +31,10 @@ const QuestionsPage = () => {
     if (window.confirm('Are you sure you want to delete this question?')) {
       try {
         await deleteQuestionData(questionId);
-        refetchData(); // Refetch data after deletion
+        toast.success('Question deleted successfully');
+        refetchData();
       } catch (error) {
+        toast.error('Failed to delete question');
         console.error('Error deleting question:', error);
       }
     }
@@ -83,12 +86,14 @@ const QuestionsPage = () => {
     setEditingQuestion(null);
   };
 
-  const handleFormSubmit = async (data) => {
+  const handleSubmitQuestion = async (formData) => {
     try {
-      await submitQuestionData(data);
-      refetchData(); // Refetch data after submission
+      await submitQuestionData(formData);
+      toast.success(editingQuestion ? 'Question updated successfully' : 'Question added successfully');
       closeModal();
+      refetchData();
     } catch (error) {
+      toast.error(editingQuestion ? 'Failed to update question' : 'Failed to add question');
       console.error('Error submitting question:', error);
     }
   };
@@ -334,7 +339,7 @@ const QuestionsPage = () => {
        
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingQuestion ? 'Edit Question' : 'Add New Question'}>
         <QuestionForm 
-          onSubmit={handleFormSubmit} 
+          onSubmit={handleSubmitQuestion} 
           initialData={editingQuestion} 
           allSessions={dashboardData.sessions} 
           allTerms={dashboardData.terms}

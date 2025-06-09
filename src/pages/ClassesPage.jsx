@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'react-toastify';
 import ClassCard from '../components/ClassCard';
 import ClassForm from '../components/ClassForm';
 import Modal from '../components/Modal';
@@ -43,12 +44,15 @@ const ClassesPage = () => {
 
   const handleDeleteClass = async (classId) => {
     if (window.confirm('Are you sure you want to delete this class?')) {
-       await deleteClassesData(classId).then((response)=>{
-        console.log('response: ', response);
+      try {
+        await deleteClassesData(classId);
+        toast.success('Class deleted successfully');
         window.location.reload();
-       })
+      } catch (error) {
+        toast.error('Failed to delete class');
+        console.error('Error deleting class:', error);
+      }
     }
-
   };
 
   const closeModal = () => {
@@ -57,16 +61,17 @@ const ClassesPage = () => {
   };
 
   let sessionId= availableSessions.filter((session) => session.name === selectedSession)[0].id
-  const handleClassFormSubmit = async (formData) => {
-    formData.sessionId = sessionId
-    
-    await submitClassData(formData).then((response)=>{
-      console.log('response: ', response);
+  const handleSubmitClass = async (formData) => {
+    try {
+      formData.sessionId = sessionId
+      await submitClassData(formData);
+      toast.success(editingClass ? 'Class updated successfully' : 'Class added successfully');
+      closeModal();
       window.location.reload();
-    }).catch(error => console.log(error));
-    
-    closeModal();
-
+    } catch (error) {
+      toast.error(editingClass ? 'Failed to update class' : 'Failed to add class');
+      console.error('Error submitting class:', error);
+    }
   };
 
    if (isLoading) {
@@ -121,7 +126,7 @@ const ClassesPage = () => {
               classData={cls}
               onEdit={handleEditClassClick}
               onDelete={handleDeleteClass}
-              selectedSession={sessionId}
+              selectedSession={selectedSession}
               selectedTerm={selectedTerm}
             />
           ))
@@ -134,7 +139,7 @@ const ClassesPage = () => {
 
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingClass ? 'Edit Class' : 'Add New Class'}>
         <ClassForm 
-        onSubmit={handleClassFormSubmit} 
+        onSubmit={handleSubmitClass} 
         initialData={editingClass} 
         classTypes={classTypes}
         selectedSession={selectedSession} />

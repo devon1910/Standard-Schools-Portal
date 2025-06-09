@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom'; // To get classId
 import StudentForm from '../components/StudentForm';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
+import { toast } from 'react-toastify';
 
 // Optional: You could import icons here if you install a library like react-icons
 import { FaEdit, FaPlus, FaTrashAlt } from 'react-icons/fa'; // Example icons
@@ -10,31 +11,40 @@ import { deleteStudentData, getStudentsData, submitStudentData } from '../servic
 import { useDashboardData } from '../layouts/MainLayout';
 
 const StudentsPage = () => {
-  const { classId, sessionId } = useParams(); // Get classId from URL path
+  // const { classId, sessionId } = useParams(); // Get classId from URL path
   const [searchParams] = useSearchParams(); // Get query parameters
-  const selectedSession = searchParams.get('session') || 0; // Default or get from URL
-  const selectedTerm = searchParams.get('term') || '1st'; // Default or get from URL
+  const selectedSession = searchParams.get('session') || ''; // Default or get from URL
+  const selectedClass = searchParams.get('class') || ''; // Default or get from URL  
+  const selectedTerm = searchParams.get('term') || ''; // Default or get from URL
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [allStudents, setAllStudents] = useState([]);
 
-  const { dashboardData, isLoading} = useDashboardData();
+  const { dashboardData} = useDashboardData();
 
-  const availableSessions = dashboardData.sessions;
+  const availableSessions = dashboardData.sessions
   const terms = dashboardData.terms;
+  const sessionId = availableSessions.find(session => session.name === selectedSession)?.id || '';
+  const termId = terms.find(term => term.name === selectedTerm)?.id || '';
+  const classId = dashboardData.classes.find(cls => cls.name === selectedClass)?.id || '';
 
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    getStudentsData(classId,selectedSession).then((response) => { 
-      // Pass classId and sessionId to getStudentsData function 
-      console.log('response: ', response);
-      setAllStudents(response.data);
-
-  }).catch((error) => {
-    console.log(error);
-  });
-  }, [classId, selectedSession]);
+    setIsLoading(true);
+    if(sessionId || classId || termId) {
+       getStudentsData(sessionId, classId, termId)
+      .then((response) => {
+        setAllStudents(response.data);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error('Error fetching students:', error);
+      });
+    }
+   
+  }, [classId, sessionId,termId]);
 
 
   const tableHeaders = ['Name', 'Fee Status', 'Balance', 'Actions'];
@@ -86,24 +96,38 @@ const StudentsPage = () => {
     setEditingStudent(null);
   };
 
-  const handleStudentFormSubmit = (formData) => {
-     submitStudentData(formData).then((response) => {
-       console.log('response: ', response);
-        window.location.reload();
 
-     }).catch(error => console.log(error));
-    closeModal();
+  const handleDeleteStudent = async (studentId) => {
+    if (window.confirm('Are you sure you want to delete this student?')) {
+      try {
+        await deleteStudentData(studentId);
+        toast.success('Student deleted successfully');
+        // Refresh the students list
+        const response = await getStudentsData(classId, selectedSession);
+        setAllStudents(response.data);
+      } catch (error) {
+        toast.error('Failed to delete student');
+        console.error('Error deleting student:', error);
+      }
+    }
   };
 
-  const handleDeleteStudent = (studentId) => {
-    if (window.confirm('Are you sure you want to delete this student record?')) {
-      // Replace with actual delete logic
-      deleteStudentData(studentId).then((response) => {
+  const handleSubmitStudent = async (formData) => {
+    try {
+      await submitStudentData(formData).then((response) => {
         console.log('response: ', response);
-        window.location.reload();
-      })
-  }
-}
+        toast.success(editingStudent ? 'Student updated successfully' : 'Student added successfully');
+      });
+      window.location.reload(); // Refresh the page to show updated data
+    } catch (error) {
+      toast.error(editingStudent ? 'Failed to update student' : 'Failed to add student');
+      console.error('Error submitting student:', error);
+    }
+    finally {
+      closeModal();
+    }
+  };
+
    if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -115,7 +139,7 @@ const StudentsPage = () => {
     <div className="bg-white p-6 rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-semibold text-gray-800">
-          Students in {classId}
+          Students in {selectedClass}
           <span className="text-xl font-normal text-gray-600 block mt-1">
             Session: {selectedSession}, Term: {selectedTerm}
           </span>
@@ -140,13 +164,13 @@ const StudentsPage = () => {
 
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingStudent ? 'Edit Student' : 'Add New Student'}>
         <StudentForm
-          onSubmit={handleStudentFormSubmit}
+          onSubmit={handleSubmitStudent}
           terms={terms}
           classId={classId}
           sessions={availableSessions}
           initialData={editingStudent}
           defaultSession={selectedSession}
-          defaultTerm={selectedTerm}
+          defaultTerm={termId}
         />
       </Modal>
     </div>

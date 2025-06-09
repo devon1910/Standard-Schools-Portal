@@ -57,9 +57,13 @@ const SessionsPage = () => {
    submitSessionData(formData).then((response) => {
      console.log('response: ', response);
      window.location.reload();
+   }).catch((error) => {
+     console.error('Error submitting session:', error);
+   }).finally(() => {
+     closeModal();
    })
 
-    closeModal();
+    
   };
 
   const handleDeleteSession = (sessionId) => {
