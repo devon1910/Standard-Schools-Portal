@@ -12,7 +12,7 @@ API.interceptors.request.use(
 
   config => {
     
-    const userToken = localStorage.getItem('user') === "undefined" ? null : localStorage.getItem('user');
+    const userToken = localStorage.getItem('token') === "undefined" ? null : localStorage.getItem('token');
     // Get token from localStorage
     const token = userToken 
       ? JSON.parse(userToken) 

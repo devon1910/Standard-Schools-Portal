@@ -1,6 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { getDashboardData } from '../services/StandardSchoolsAPIService';
+import { FiLogOut } from 'react-icons/fi';
 
 // Create Context for Dashboard Data
 const DashboardContext = createContext();
@@ -16,6 +17,7 @@ export const useDashboardData = () => {
 
 const MainLayout = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   
   // Navigation state
   const [activeTab, setActiveTab] = useState(location.pathname.split('/')[1] || 'questions');
@@ -176,29 +178,47 @@ const MainLayout = ({ children }) => {
     { name: 'Sessions', path: '/sessions', id: 'sessions' },
   ];
 
+  const handleLogout = () => {
+
+    if(window.confirm('Are you sure you want to logout?')) {
+      localStorage.removeItem('token');
+      navigate('/login');
+    }
+    
+  };
+
   return (
     <DashboardContext.Provider value={contextValue}>
       <div className="min-h-screen flex flex-col bg-light-background text-black">
         <header className="bg-white shadow-md p-4">
           <nav className="container mx-auto flex justify-between items-center">
             <h1 className="text-2xl font-bold text-primary-orange">School High School Portal</h1>
-            <ul className="flex space-x-4">
-              {navItems.map((item) => (
-                <li key={item.id}>
-                  <Link
-                    to={item.path}
-                    onClick={() => setActiveTab(item.id)}
-                    className={`px-4 py-2 rounded-md transition-colors duration-200 ${
-                      activeTab === item.id
-                        ? 'bg-primary-orange text-white'
-                        : 'text-black hover:bg-gray-100'
-                    } cursor-pointer`}
-                  >
-                    {item.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <div className="flex items-center space-x-4">
+              <ul className="flex space-x-4">
+                {navItems.map((item) => (
+                  <li key={item.id}>
+                    <Link
+                      to={item.path}
+                      onClick={() => setActiveTab(item.id)}
+                      className={`px-4 py-2 rounded-md transition-colors duration-200 ${
+                        activeTab === item.id
+                          ? 'bg-primary-orange text-white'
+                          : 'text-black hover:bg-gray-100'
+                      } cursor-pointer`}
+                    >
+                      {item.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600 transition-colors duration-200 flex items-center space-x-2"
+              >
+                <FiLogOut className="inline-block" />
+                <span>Logout</span>
+              </button>
+            </div>
           </nav>
         </header>
         <main className="flex-grow container mx-auto p-4 py-8">
