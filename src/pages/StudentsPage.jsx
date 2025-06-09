@@ -15,26 +15,23 @@ const StudentsPage = () => {
   const [searchParams] = useSearchParams(); // Get query parameters
   const selectedSession = searchParams.get('session') || ''; // Default or get from URL
   const selectedClass = searchParams.get('class') || ''; // Default or get from URL  
-  const selectedTerm = searchParams.get('term') || ''; // Default or get from URL
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [allStudents, setAllStudents] = useState([]);
 
-  const { dashboardData} = useDashboardData();
+  const { dashboardData, refetchData} = useDashboardData();
 
   const availableSessions = dashboardData.sessions
-  const terms = dashboardData.terms;
   const sessionId = availableSessions.find(session => session.name === selectedSession)?.id || '';
-  const termId = terms.find(term => term.name === selectedTerm)?.id || '';
   const classId = dashboardData.classes.find(cls => cls.name === selectedClass)?.id || '';
 
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     setIsLoading(true);
-    if(sessionId || classId || termId) {
-       getStudentsData(sessionId, classId, termId)
+    if(sessionId || classId ) {
+       getStudentsData(sessionId, classId)
       .then((response) => {
         setAllStudents(response.data);
         setIsLoading(false);
@@ -44,7 +41,7 @@ const StudentsPage = () => {
       });
     }
    
-  }, [classId, sessionId,termId]);
+  }, [classId, sessionId]);
 
 
   const tableHeaders = ['Name', 'Fee Status', 'Balance', 'Actions'];
@@ -141,7 +138,7 @@ const StudentsPage = () => {
         <h2 className="text-3xl font-semibold text-gray-800">
           Students in {selectedClass}
           <span className="text-xl font-normal text-gray-600 block mt-1">
-            Session: {selectedSession}, Term: {selectedTerm}
+            Session: {selectedSession}
           </span>
         </h2>
         <button
@@ -158,19 +155,17 @@ const StudentsPage = () => {
         </div>
       ) : (
         <p className="text-center text-gray-600 py-8">
-          No students found for this class and specified session ({selectedSession}), and term ({selectedTerm}).
+          No students found for this class and specified session ({selectedSession}).
         </p>
       )}
 
       <Modal isOpen={isModalOpen} onClose={closeModal} title={editingStudent ? 'Edit Student' : 'Add New Student'}>
         <StudentForm
           onSubmit={handleSubmitStudent}
-          terms={terms}
           classId={classId}
-          sessions={availableSessions}
+          selectedSession={selectedSession}
           initialData={editingStudent}
           defaultSession={selectedSession}
-          defaultTerm={termId}
         />
       </Modal>
     </div>

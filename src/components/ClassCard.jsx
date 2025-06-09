@@ -13,7 +13,7 @@ const ClassCard = ({ classData, onEdit, onDelete, selectedSession, selectedTerm 
       <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 mt-4">
         {/* View Students Button */}
         <Link
-          to={`/students?session=${selectedSession}&class=${classData.name}&term=${selectedTerm}`}
+          to={`/students?session=${selectedSession}&class=${classData.name}`}
           className="flex-grow text-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors cursor-pointer flex items-center justify-center space-x-1"
           title="View Students"
         >

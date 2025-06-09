@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 
-const StudentForm = ({ onSubmit, classId, terms, sessions,initialData, defaultSession, defaultTerm }) => {
+const StudentForm = ({ onSubmit, classId, selectedSession,initialData, defaultSession }) => {
   const [formData, setFormData] = useState({
     name: '',
     id: 0,
     classId:classId,
-    termId: defaultTerm || 0,
-    sessionId: defaultSession || 0,
+    sessionId: defaultSession || selectedSession.id,
     feePaid: false, // New field
     balance: 0,     // New field
   });
+
 
   useEffect(() => {
     if (initialData) {
@@ -19,13 +19,12 @@ const StudentForm = ({ onSubmit, classId, terms, sessions,initialData, defaultSe
         name: '',
         id: 0,
         classId:classId,
-        termId: defaultTerm || 0,
-        sessionId: defaultSession || 0,
+        sessionId: defaultSession || selectedSession.id,
         feePaid: false,
         balance: 0,
       });
     }
-  }, [initialData, defaultSession, defaultTerm, classId]);
+  }, [initialData, defaultSession, classId]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -68,35 +67,12 @@ const StudentForm = ({ onSubmit, classId, terms, sessions,initialData, defaultSe
           value={formData.sessionId}
           onChange={handleChange}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 sm:text-sm" 
+          disabled="true" 
           required>
-          <option value="">Select Session</option>
-          {sessions.map((session) => (
-            <option key={session.id} value={session.id}>
-              {session.name}
-            </option>
-          ))}
+          <option value={selectedSession.id}>{selectedSession.name}</option>    
         </select>
       </div>
 
-      <div>
-        <label htmlFor="studentTerm" className="block text-sm font-medium text-gray-700 mb-1">
-          Term
-        </label>
-        <select 
-        id='termId'
-        name='termId'
-        value={formData.termId}
-        onChange={handleChange}
-        className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 sm:text-sm"
-        required>
-          <option value="">Select Term</option>
-          {terms.map((term) => (
-            <option key={term.id} value={term.id}>
-              {term.name}
-            </option>
-          ))}
-        </select>
-      </div>
  
       <div className="flex items-center space-x-2">
         <input
