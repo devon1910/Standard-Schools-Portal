@@ -63,7 +63,7 @@ const MainLayout = ({ children }) => {
     }
   }, [location.pathname]);
 
-  // Centralized API call function
+  // Centralized API call function with debouncing
   const fetchDashboardData = async (customFilters = null) => {
     setIsLoading(true);
     
@@ -101,27 +101,20 @@ const MainLayout = ({ children }) => {
     }
   };
 
-  // Initial data load
+  // Combined effect for all filter changes and initial load
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  // Refetch when filters change (except page)
-  useEffect(() => {
-    if (filters.sessionId !== '' || filters.termId !== '' || 
-        filters.classId !== '' || filters.questionType !== '') {
-      const newFilters = { ...filters, page: 1 };
-      setFilters(newFilters);
-      fetchDashboardData(newFilters);
-    } else {
+    const timeoutId = setTimeout(() => {
       fetchDashboardData();
-    }
-  }, [filters.sessionId, filters.termId, filters.classId, filters.questionType]);
+    }, 300); // 300ms debounce
 
-  // Refetch when page changes
-  useEffect(() => {
-    fetchDashboardData();
-  }, [filters.page]);
+    return () => clearTimeout(timeoutId);
+  }, [
+    filters.sessionId,
+    filters.termId,
+    filters.classId,
+    filters.questionType,
+    filters.page
+  ]);
 
   // Filter update functions
   const updateFilters = (newFilters) => {
@@ -138,7 +131,6 @@ const MainLayout = ({ children }) => {
       pageSize: 10
     };
     setFilters(clearedFilters);
-    fetchDashboardData(clearedFilters);
   };
 
   // Context value

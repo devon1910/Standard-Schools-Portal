@@ -46,6 +46,8 @@ const ClassForm = ({ onSubmit, initialData, classTypes, selectedSession }) => {
          name="classTypeId"
          value={formData.classTypeId}
          onChange={handleChange}
+         readOnly
+         disabled
         >
         <option key={0} value="0">Select a Class Type </option>
 
@@ -70,6 +72,7 @@ const ClassForm = ({ onSubmit, initialData, classTypes, selectedSession }) => {
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
           placeholder="e.g., JSS1 A"
           required
+          readOnly
         />
       </div>
 
