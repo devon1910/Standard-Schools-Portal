@@ -5,9 +5,9 @@ const StudentForm = ({ onSubmit, classId, selectedSession,initialData, defaultSe
     name: '',
     id: 0,
     classId:classId,
-    sessionId: defaultSession || selectedSession.id,
-    feePaid: false, // New field
-    balance: 0,     // New field
+    sessionId: selectedSession,
+    feePaid: false, 
+    balance: 0,     
   });
 
 
@@ -19,7 +19,7 @@ const StudentForm = ({ onSubmit, classId, selectedSession,initialData, defaultSe
         name: '',
         id: 0,
         classId:classId,
-        sessionId: defaultSession || selectedSession.id,
+        sessionId: selectedSession,
         feePaid: false,
         balance: 0,
       });
@@ -61,16 +61,15 @@ const StudentForm = ({ onSubmit, classId, selectedSession,initialData, defaultSe
         <label htmlFor="studentSession" className="block text-sm font-medium text-gray-700 mb-1">
           Session
         </label>
-        <select
+        <input
+          type='text'
           id="sessionId"
           name="sessionId"
           value={formData.sessionId}
           onChange={handleChange}
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 sm:text-sm" 
           disabled="true" 
-          required>
-          <option value={selectedSession.id}>{selectedSession.name}</option>    
-        </select>
+          required/>   
       </div>
 
  

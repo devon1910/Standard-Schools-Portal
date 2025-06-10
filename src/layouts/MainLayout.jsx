@@ -149,6 +149,7 @@ const MainLayout = ({ children }) => {
     
     // Loading state
     isLoading,
+    setIsLoading,
     
     // Filters
     filters,

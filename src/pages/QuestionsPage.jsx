@@ -14,6 +14,7 @@ const QuestionsPage = () => {
     dashboardData,
     availableQuestionType,
     isLoading,
+    setIsLoading,
     filters,
     updateFilters,
     clearAllFilters,
@@ -30,6 +31,7 @@ const QuestionsPage = () => {
   const handleDeleteQuestion = async (questionId) => {
     if (window.confirm('Are you sure you want to delete this question?')) {
       try {
+        setIsLoading(true);
         await deleteQuestionData(questionId);
         toast.success('Question deleted successfully');
         refetchData();
@@ -88,6 +90,7 @@ const QuestionsPage = () => {
 
   const handleSubmitQuestion = async (formData) => {
     try {
+      setIsLoading(true);
       await submitQuestionData(formData);
       toast.success(editingQuestion ? 'Question updated successfully' : 'Question added successfully');
       closeModal();

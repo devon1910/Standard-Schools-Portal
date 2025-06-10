@@ -29,25 +29,27 @@ const StudentsPage = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    setIsLoading(true);
+    handleStudentDataRetrieval();
+  }, []);
+
+
+  const handleStudentDataRetrieval = async () => {
     if(sessionId || classId ) {
        getStudentsData(sessionId, classId)
       .then((response) => {
         setAllStudents(response.data);
-        setIsLoading(false);
       })
       .catch((error) => {
         console.error('Error fetching students:', error);
-      });
-    }
-   
-  }, [classId, sessionId]);
-
-
+      }).finally(() => {
+        setIsLoading(false);
+    })
+   }
+  }
   const tableHeaders = ['Name', 'Fee Status', 'Balance', 'Actions'];
 
   const tableRows = allStudents.map(s => ({
-    id: s.id,
+    id: s.name,
     data: [
       s.name,
       // Conditional styling for Fee Status
@@ -97,11 +99,11 @@ const StudentsPage = () => {
   const handleDeleteStudent = async (studentId) => {
     if (window.confirm('Are you sure you want to delete this student?')) {
       try {
-        await deleteStudentData(studentId);
-        toast.success('Student deleted successfully');
-        // Refresh the students list
-        const response = await getStudentsData(classId, selectedSession);
-        setAllStudents(response.data);
+        await deleteStudentData(studentId).then((response) => {
+          console.log('response: ', response);
+          toast.success('Student deleted successfully');
+          handleStudentDataRetrieval();
+        });
       } catch (error) {
         toast.error('Failed to delete student');
         console.error('Error deleting student:', error);
@@ -111,16 +113,18 @@ const StudentsPage = () => {
 
   const handleSubmitStudent = async (formData) => {
     try {
+      setIsLoading(true);
+      formData.sessionId = sessionId
       await submitStudentData(formData).then((response) => {
+        
         console.log('response: ', response);
         toast.success(editingStudent ? 'Student updated successfully' : 'Student added successfully');
       });
-      window.location.reload(); // Refresh the page to show updated data
     } catch (error) {
       toast.error(editingStudent ? 'Failed to update student' : 'Failed to add student');
       console.error('Error submitting student:', error);
-    }
-    finally {
+    }finally {
+      handleStudentDataRetrieval();
       closeModal();
     }
   };

@@ -11,7 +11,7 @@ const SessionsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSession, setEditingSession] = useState(null); // For future edit functionality
 
-  const { dashboardData, isLoading} = useDashboardData();
+  const { dashboardData, isLoading, setIsLoading} = useDashboardData();
 
   const availableSessions = dashboardData.sessions;
 
@@ -53,7 +53,7 @@ const SessionsPage = () => {
   };
 
   const handleSessionFormSubmit = (formData) => {
-    console.log('Form Data:', formData);
+    setIsLoading(true);
    submitSessionData(formData).then((response) => {
      console.log('response: ', response);
      window.location.reload();
@@ -68,7 +68,8 @@ const SessionsPage = () => {
 
   const handleDeleteSession = (sessionId) => {
     if (window.confirm('Are you sure you want to delete this session?')) {
-       deleteSessionData(sessionId).then((response) => {
+      setIsLoading(true);
+      deleteSessionData(sessionId).then((response) => {
       console.log('response: ', response);
       window.location.reload();
     })

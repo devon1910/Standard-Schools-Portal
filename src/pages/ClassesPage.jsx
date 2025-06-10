@@ -16,7 +16,7 @@ const ClassesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState(null);
 
-  const { dashboardData, isLoading } = useDashboardData();
+  const { dashboardData, isLoading,setIsLoading } = useDashboardData();
 
   const sessionFromLocalStorage = localStorage.getItem("selectedSession") || "";
 
@@ -35,9 +35,8 @@ const ClassesPage = () => {
     const selectedSessionObj = availableSessions.find(
       (session) => session.name === selectedSession
     );
-
     // Filter classes that belong to the selected session
-    return cls.sessionId + 1 === selectedSessionObj?.id;
+    return cls.sessionId  === selectedSessionObj?.id;
   });
 
   const handleAddClassClick = () => {
@@ -53,6 +52,7 @@ const ClassesPage = () => {
   const handleDeleteClass = async (classId) => {
     if (window.confirm("Are you sure you want to delete this class?")) {
       try {
+        setIsLoading(true);
         await deleteClassesData(classId);
         toast.success("Class deleted successfully");
         window.location.reload();
@@ -74,6 +74,7 @@ const ClassesPage = () => {
   const handleSubmitClass = async (formData) => {
     try {
       formData.sessionId = sessionId;
+      setIsLoading(true);
       await submitClassData(formData).then((response) => {
         console.log("response: ", response);
         toast.success(
@@ -82,13 +83,16 @@ const ClassesPage = () => {
             : "Class added successfully"
         );
         closeModal();
-        //window.location.reload();
+        window.location.reload();
       });
     } catch (error) {
       toast.error(
         editingClass ? "Failed to update class" : "Failed to add class"
       );
       console.error("Error submitting class:", error);
+    }
+    finally {
+      setIsLoading(false);
     }
   };
 
