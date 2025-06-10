@@ -29,14 +29,14 @@ const SessionsPage = () => {
           <FaEdit />
           <span>Edit</span>
         </button>
-        <button
+        {/* <button
           onClick={() => handleDeleteSession(session.id)}
           className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors cursor-pointer flex items-center justify-center space-x-1"
           title="Delete Session"
         >
           <FaTrashAlt />
           <span>Delete</span>
-        </button>
+        </button> */}
       </div>
     )
   }));
