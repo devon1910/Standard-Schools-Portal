@@ -179,13 +179,15 @@ const MainLayout = ({ children }) => {
       navigate('/login');
     }
   };
+   const schoolName=localStorage.getItem("schoolId") === "1" ? "Standard High School" : "Standard International College";
 
+   console.log("schoolName", schoolName);
   return (
     <DashboardContext.Provider value={contextValue}>
       <div className="min-h-screen flex flex-col bg-light-background text-black">
         <header className="bg-white shadow-md p-4">
           <nav className="container mx-auto flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-primary-orange">School High School Portal</h1>
+            <h1 className="text-2xl font-bold text-primary-orange">{schoolName}</h1>
             <div className="flex items-center space-x-4">
               <ul className="flex space-x-4">
                 {navItems.map((item) => (

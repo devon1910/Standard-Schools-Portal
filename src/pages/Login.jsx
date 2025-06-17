@@ -28,6 +28,7 @@ const Login = () => {
         if (response.status === 200) {
           toast.success('Login successful!');
           localStorage.setItem("token", JSON.stringify(response.data.token));  
+          localStorage.setItem("schoolId", response.data.schoolId);
           navigate("/questions");
         } else {
           toast.error('Login failed. Please check your credentials.');
