@@ -29,6 +29,7 @@ const ClassesPage = () => {
   const classesData = dashboardData.classes;
   const classTypes = dashboardData.classTypes;
 
+  console.log("classesData: ", classesData);
   // Filter classes by selected session
   const filteredClasses = classesData.filter((cls) => {
     // Find the selected session object
@@ -36,7 +37,7 @@ const ClassesPage = () => {
       (session) => session.name === selectedSession
     );
     // Filter classes that belong to the selected session
-    return cls.sessionId  === selectedSessionObj?.id;
+    return cls.sessionId  == selectedSessionObj?.id;
   });
 
   const handleAddClassClick = () => {

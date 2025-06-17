@@ -181,7 +181,7 @@ const MainLayout = ({ children }) => {
   };
    const schoolName=localStorage.getItem("schoolId") === "1" ? "Standard High School" : "Standard International College";
 
-   console.log("schoolName", schoolName);
+   console.log("schoolName", localStorage.getItem("schoolId"));
   return (
     <DashboardContext.Provider value={contextValue}>
       <div className="min-h-screen flex flex-col bg-light-background text-black">
