@@ -208,7 +208,7 @@ const MainLayout = ({ children }) => {
               </ul>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600 transition-colors duration-200 flex items-center space-x-2"
+                className="px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600 transition-colors duration-200 flex items-center space-x-2 cursor-pointer"
               >
                 <FiLogOut className="inline-block" />
                 <span>Logout</span>
