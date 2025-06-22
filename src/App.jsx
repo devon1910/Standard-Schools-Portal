@@ -12,6 +12,7 @@ import QuestionsPage from "./pages/QuestionsPage";
 import ClassesPage from "./pages/ClassesPage";
 import StudentsPage from "./pages/StudentsPage";
 import SessionsPage from "./pages/SessionsPage";
+import SubjectsPage from "./pages/SubjectsPage";
 import Login from "./pages/Login";
 import "./App.css";
 
@@ -73,6 +74,14 @@ function App() {
           element={
             <MainLayout>
               <SessionsPage />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/subjects"
+          element={
+            <MainLayout>
+              <SubjectsPage />
             </MainLayout>
           }
         />
