@@ -4,7 +4,7 @@ import StudentForm from '../components/StudentForm';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
 import { toast } from 'react-toastify';
-import { FaEdit, FaPlus, FaTrashAlt } from 'react-icons/fa';
+import { FaEdit, FaPlus, FaPrint, FaTrashAlt, FaWpforms } from 'react-icons/fa';
 import { deleteStudentData, getStudentsData, submitStudentData } from '../services/StandardSchoolsAPIService';
 import { useDashboardData } from '../layouts/MainLayout';
 
@@ -107,6 +107,14 @@ const StudentsPage = () => {
           >
             <FaEdit className="inline-block mr-1" />
             <span>Edit</span>
+          </button> 
+          <button
+            onClick={() => { }}
+            className="px-3 py-1 bg-green-700 text-white rounded hover:bg-opacity-80 transition-colors cursor-pointer flex items-center justify-center space-x-1"
+            title="Prepare Report Card"
+          >
+            <FaPrint className="inline-block mr-1" />
+            <span>Prepare Result</span>
           </button>
           <button
             onClick={() => handleDeleteStudent(s.id)}
