@@ -9,10 +9,16 @@ import { deleteSubjectData, submitSubjectData } from '../services/StandardSchool
 const SubjectsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { dashboardData, isLoading, setIsLoading } = useDashboardData();
 
   const availableSubjects = dashboardData.subjects;
+
+  // Filter subjects by search term
+  const searchedSubjects = availableSubjects.filter(subject =>
+    subject.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleDeleteSubject = (subjectId) => {
     if (window.confirm('Are you sure you want to delete this subject?')) {
@@ -30,7 +36,7 @@ const SubjectsPage = () => {
   };
 
   const tableHeaders = ['Subject Name', 'Class Type', 'Actions'];
-  const tableRows = availableSubjects.map(subject => ({
+  const tableRows = searchedSubjects.map(subject => ({
     id: subject.id,
     data: [
       subject.name,
@@ -105,7 +111,18 @@ const SubjectsPage = () => {
         </button>
       </div>
 
-      {availableSubjects.length > 0 ? (
+      {/* Search Field */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search subjects by name..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
+        />
+      </div>
+
+      {searchedSubjects.length > 0 ? (
         <div className="overflow-x-auto">
           <Table headers={tableHeaders} rows={tableRows} />
         </div>

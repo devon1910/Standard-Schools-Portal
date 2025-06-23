@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { useDashboardData } from '../layouts/MainLayout';
 
-const StudentForm = ({ onSubmit, classId, selectedSession, initialData }) => {
+const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selectedTermName, selectedTermId }) => {
   const [formData, setFormData] = useState({
     name: '',
     id: 0,
     classId: classId,
     sessionId: selectedSession,
+    isFeePaid: false,
+    balance: ''
   });
-  const [selectedTermId, setSelectedTermId] = useState('');
-  const [termBalance, setTermBalance] = useState(0);
-
-  const { dashboardData } = useDashboardData();
-  const { terms } = dashboardData;
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      setFormData({
+        ...initialData,
+        isFeePaid: initialData.isFeePaid !== undefined ? initialData.isFeePaid : false,
+        balance: initialData.balance !== undefined ? initialData.balance : ''
+      });
     } else {
       setFormData(prev => ({
         ...prev,
@@ -24,56 +24,45 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData }) => {
         id: 0,
         classId: classId,
         sessionId: selectedSession,
+        isFeePaid: false,
+        balance: ''
       }));
     }
-    // Set initial term and balance
-    if (terms.length > 0) {
-        const initialTermId = terms[0].id;
-        setSelectedTermId(initialTermId);
-        if (initialData) {
-            updateTermBalance(initialTermId, initialData);
-        } else {
-            setTermBalance(0);
-        }
-    }
-  }, [initialData, classId, selectedSession, terms]);
+  }, [initialData, classId, selectedSession]);
 
-  useEffect(() => {
-    if (initialData) {
-        updateTermBalance(selectedTermId, initialData);
-    }
-  }, [selectedTermId, initialData]);
-
-  const updateTermBalance = (termId, studentData) => {
-    const term = terms.find(t => t.id.toString() === termId.toString());
-    if (term && studentData) {
-        const prefix = term.name.split(" ")[0].toLowerCase();
-        const balanceKey = `${prefix}TermBalance`;
-        setTermBalance(studentData[balanceKey] || 0);
-    }
-  };
-
-  const handleTermChange = (e) => {
-    setSelectedTermId(e.target.value);
-  };
-  
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
+      ...(name === 'isFeePaid' && checked ? { balance: 0 } : {})
     }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // We only submit general student data, not term-specific balances from this form.
-    const { name, id, classId: studentClassId, sessionId: studentSessionId } = formData;
-    onSubmit({ name, id, classId: studentClassId, sessionId: studentSessionId });
+    const { name, id, classId: studentClassId, sessionId: studentSessionId, isFeePaid, balance } = formData;
+    onSubmit({ name, id, classId: studentClassId, sessionId: studentSessionId, isFeePaid, balance, selectedTermId });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-4">
+  
+      {/* Selected Term Field */}
+      <div>
+        <label htmlFor="selectedTerm" className="block text-sm font-medium text-gray-700 mb-1">
+          Selected Term
+        </label>
+        <input
+          type="text"
+          id="selectedTerm"
+          name="selectedTerm"
+          value={selectedTermName || ''}
+          readOnly
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 sm:text-sm"
+        />
+      </div>
+      {/* Student Name Field */}
       <div>
         <label htmlFor="studentName" className="block text-sm font-medium text-gray-700 mb-1">
           Student Name
@@ -89,52 +78,39 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData }) => {
           required
         />
       </div>
-
+      {/* Fee Paid Checkbox */}
+      <div className="flex items-center space-x-2">
+        <input
+          type="checkbox"
+          id="isFeePaid"
+          name="isFeePaid"
+          checked={formData.isFeePaid}
+          onChange={handleChange}
+          className="h-4 w-4 text-primary-orange focus:ring-primary-orange border-gray-300 rounded"
+        />
+        <label htmlFor="isFeePaid" className="text-sm font-medium text-gray-700">
+          {`Is fee completely paid for ${selectedTermName || ''} Term?`}
+        </label>
+      </div>
+      {/* Balance Field */}
       <div>
-        <label htmlFor="studentSession" className="block text-sm font-medium text-gray-700 mb-1">
-          Session
+        <label htmlFor="balance" className="block text-sm font-medium text-gray-700 mb-1">
+          {formData.isFeePaid ? 'Balance (₦)' : 'Amount Owed (₦)'}
         </label>
         <input
-          type='text'
-          id="sessionId"
-          name="sessionId"
-          value={formData.sessionId}
-          readOnly
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 sm:text-sm"
-          required
+          type="number"
+          id="balance"
+          name="balance"
+          value={formData.isFeePaid ? 0 : formData.balance}
+          onChange={handleChange}
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm bg-gray-100"
+          placeholder="e.g., 50000"
+          min="0"
+          required={!formData.isFeePaid}
+          disabled={formData.isFeePaid}
         />
       </div>
       
-      <div>
-        <label htmlFor="term-select" className="block text-sm font-medium text-gray-700 mb-1">
-            Select Term to View Balance
-        </label>
-        <select
-            id="term-select"
-            value={selectedTermId}
-            onChange={handleTermChange}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
-        >
-            {terms.map(term => (
-                <option key={term.id} value={term.id}>{term.name}</option>
-            ))}
-        </select>
-      </div>
-
-      <div>
-        <label htmlFor="balance" className="block text-sm font-medium text-gray-700 mb-1">
-          Balance for Selected Term (₦)
-        </label>
-        <input
-          type="text"
-          id="balance"
-          name="balance"
-          value={`₦${termBalance.toLocaleString()}`}
-          readOnly
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 sm:text-sm"
-        />
-      </div>
-
       <div className="flex justify-end pt-4">
         <button
           type="submit"

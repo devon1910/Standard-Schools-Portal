@@ -36,7 +36,7 @@ const ClassForm = ({ onSubmit, initialData, classTypes, selectedSession }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
        <div>
-        <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="classTypeId" className="block text-sm font-medium text-gray-700 mb-1">
           Class Type
         </label>
         <select
@@ -46,18 +46,14 @@ const ClassForm = ({ onSubmit, initialData, classTypes, selectedSession }) => {
          name="classTypeId"
          value={formData.classTypeId}
          onChange={handleChange}
-         readOnly
-         disabled
         >
         <option key={0} value="0">Select a Class Type </option>
-
           {classTypes.map((classType) => (
             <option key={classType.id} value={classType.id}>
               {classType.name}
             </option>
           ))} 
         </select>
-      
       </div>
       <div>
         <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -72,7 +68,6 @@ const ClassForm = ({ onSubmit, initialData, classTypes, selectedSession }) => {
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
           placeholder="e.g., JSS1 A"
           required
-          readOnly
         />
       </div>
 
@@ -92,7 +87,7 @@ const ClassForm = ({ onSubmit, initialData, classTypes, selectedSession }) => {
       </div>
 
       <div>
-        <label htmlFor="classTeacher" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="session" className="block text-sm font-medium text-gray-700 mb-1">
           Academic Session
         </label>
         <input
@@ -101,7 +96,7 @@ const ClassForm = ({ onSubmit, initialData, classTypes, selectedSession }) => {
           name="session"
           value={selectedSession}
           readOnly
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
+          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm bg-gray-100"
         />
       </div>
 

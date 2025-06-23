@@ -21,7 +21,8 @@ const StudentsPage = () => {
   const [feeStatusFilter, setFeeStatusFilter] = useState('all'); // 'all', 'paid', 'unpaid'
 
   const { dashboardData } = useDashboardData();
-  const { terms, classes, sessions } = dashboardData;
+  const [terms, setTerms] = useState(dashboardData.terms || []);
+  const { classes, sessions } = dashboardData;
 
   const sessionId = sessions.find(session => session.name === selectedSession)?.id || '';
   const classId = classes.find(cls => cls.name === selectedClass)?.id || '';
@@ -60,7 +61,9 @@ const StudentsPage = () => {
     setIsLoading(true);
     getStudentsData(sessionId, classId)
       .then((response) => {
-        setAllStudents(response.data);
+        console.log("response: ", response);
+        setAllStudents(response.data.students);
+        setTerms(response.data.terms || []);
       })
       .catch((error) => {
         console.error('Error fetching students:', error);
@@ -70,6 +73,7 @@ const StudentsPage = () => {
   };
 
   const selectedTerm = terms.find(t => t.id.toString() === selectedTermId.toString());
+  const selectedTermName = selectedTerm ? selectedTerm.name : '';
   const termPrefix = selectedTerm ? selectedTerm.name.split(' ')[0] : '';
   const isFeePaidKey = selectedTerm ? `is${termPrefix}TermFeePaid` : 'isFirstTermFeePaid';
   const balanceKey = selectedTerm ? `${termPrefix.toLowerCase()}TermBalance` : 'firstTermBalance';
@@ -155,6 +159,7 @@ const StudentsPage = () => {
     }
   };
 
+  console.log("selectedTermId: ", selectedTermId);
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -188,7 +193,7 @@ const StudentsPage = () => {
             id="term-filter"
             value={selectedTermId}
             onChange={(e) => setSelectedTermId(e.target.value)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm rounded-md"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
           >
             {terms.map(term => (
               <option key={term.id} value={term.id}>{term.name}</option>
@@ -201,7 +206,7 @@ const StudentsPage = () => {
             id="fee-status-filter"
             value={feeStatusFilter}
             onChange={(e) => setFeeStatusFilter(e.target.value)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm rounded-md"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
           >
             <option value="all">All</option>
             <option value="paid">Paid</option>
@@ -227,6 +232,8 @@ const StudentsPage = () => {
           selectedSession={selectedSession}
           initialData={editingStudent}
           defaultSession={selectedSession}
+          selectedTermId={selectedTermId}
+          selectedTermName={selectedTermName}
         />
       </Modal>
     </div>

@@ -15,6 +15,7 @@ import {
 const ClassesPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClass, setEditingClass] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { dashboardData, isLoading,setIsLoading } = useDashboardData();
 
@@ -23,13 +24,11 @@ const ClassesPage = () => {
   const [selectedSession, setSelectedSession] = useState(
     sessionFromLocalStorage || "2024/2025"
   );
-  const [selectedTerm, setSelectedTerm] = useState("1st");
 
   const availableSessions = dashboardData.sessions;
   const classesData = dashboardData.classes;
   const classTypes = dashboardData.classTypes;
 
-  console.log("classesData: ", classesData);
   // Filter classes by selected session
   const filteredClasses = classesData.filter((cls) => {
     // Find the selected session object
@@ -37,8 +36,13 @@ const ClassesPage = () => {
       (session) => session.name === selectedSession
     );
     // Filter classes that belong to the selected session
-    return cls.sessionId  == selectedSessionObj?.id;
+    return cls.sessionId == selectedSessionObj?.id;
   });
+
+  // Further filter by search term
+  const searchedClasses = filteredClasses.filter(cls =>
+    cls.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleAddClassClick = () => {
     setEditingClass(null);
@@ -112,7 +116,7 @@ const ClassesPage = () => {
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
-      {/* <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6">
         <h2 className="text-3xl font-semibold text-gray-800">Classes</h2>
         <button
           onClick={handleAddClassClick}
@@ -122,7 +126,18 @@ const ClassesPage = () => {
           <FaPlus className="inline-block" />
           <span>Add New Class</span>
         </button>
-      </div> */}
+      </div>
+
+      {/* Search Field */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search classes by name..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
+        />
+      </div>
 
       {/* Session and Term Filters */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -150,15 +165,14 @@ const ClassesPage = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredClasses.length > 0 ? (
-          filteredClasses.map((cls) => (
+        {searchedClasses.length > 0 ? (
+          searchedClasses.map((cls) => (
             <ClassCard
               key={cls.id}
               classData={cls}
               onEdit={handleEditClassClick}
               onDelete={handleDeleteClass}
               selectedSession={selectedSession}
-              selectedTerm={selectedTerm}
             />
           ))
         ) : (
