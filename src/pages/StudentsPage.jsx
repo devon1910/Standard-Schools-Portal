@@ -61,7 +61,6 @@ const StudentsPage = () => {
     setIsLoading(true);
     getStudentsData(sessionId, classId)
       .then((response) => {
-        console.log("response: ", response);
         setAllStudents(response.data.students);
         setTerms(response.data.terms || []);
       })
@@ -156,6 +155,7 @@ const StudentsPage = () => {
     try {
       setIsLoading(true);
       formData.sessionId = sessionId;
+      console.log("Submitting student data: ", formData);
       await submitStudentData(formData);
       toast.success(editingStudent ? 'Student updated successfully' : 'Student added successfully');
     } catch (error) {
@@ -167,7 +167,6 @@ const StudentsPage = () => {
     }
   };
 
-  console.log("selectedTermId: ", selectedTermId);
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
