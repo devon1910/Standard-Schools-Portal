@@ -1,31 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import StudentForm from '../components/StudentForm';
-import Table from '../components/Table';
-import Modal from '../components/Modal';
-import { toast } from 'react-toastify';
-import { FaEdit, FaPlus, FaPrint, FaTrashAlt, FaWpforms } from 'react-icons/fa';
-import { deleteStudentData, getStudentsData, submitStudentData } from '../services/StandardSchoolsAPIService';
-import { useDashboardData } from '../layouts/MainLayout';
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import StudentForm from "../components/StudentForm";
+import Table from "../components/Table";
+import Modal from "../components/Modal";
+import { toast } from "react-toastify";
+import { FaEdit, FaPlus, FaPrint, FaTrashAlt, FaWpforms } from "react-icons/fa";
+import {
+  deleteStudentData,
+  getStudentsData,
+  submitStudentData,
+} from "../services/StandardSchoolsAPIService";
+import { useDashboardData } from "../layouts/MainLayout";
 
 const StudentsPage = () => {
   const [searchParams] = useSearchParams();
-  const selectedSession = searchParams.get('session') || '';
-  const selectedClass = searchParams.get('class') || '';
+  const selectedSession = searchParams.get("session") || "";
+  const selectedClass = searchParams.get("class") || "";
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [allStudents, setAllStudents] = useState([]);
   const [filteredStudents, setFilteredStudents] = useState([]);
-  const [selectedTermId, setSelectedTermId] = useState('');
-  const [feeStatusFilter, setFeeStatusFilter] = useState('all'); // 'all', 'paid', 'unpaid'
+  const [selectedTermId, setSelectedTermId] = useState("");
+  const [searchStudent, setSearchStudent] = useState("");
+  const [feeStatusFilter, setFeeStatusFilter] = useState("all"); // 'all', 'paid', 'unpaid'
 
   const { dashboardData } = useDashboardData();
   const [terms, setTerms] = useState(dashboardData.terms || []);
   const { classes, sessions } = dashboardData;
 
-  const sessionId = sessions.find(session => session.name === selectedSession)?.id || '';
-  const classId = classes.find(cls => cls.name === selectedClass)?.id || '';
+  const sessionId =
+    sessions.find((session) => session.name === selectedSession)?.id || "";
+  const classId = classes.find((cls) => cls.name === selectedClass)?.id || "";
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -43,19 +49,30 @@ const StudentsPage = () => {
 
   useEffect(() => {
     let students = [...allStudents];
-    const term = terms.find(t => t.id.toString() === selectedTermId.toString());
+    const term = terms.find(
+      (t) => t.id.toString() === selectedTermId.toString()
+    );
 
-    if (term && feeStatusFilter !== 'all') {
-      const termName = term.name.split(' ')[0]; // "First" from "First Term"
+    if (term && feeStatusFilter !== "all") {
+      const termName = term.name.split(" ")[0]; // "First" from "First Term"
       const feePaidKey = `is${termName}TermFeePaid`;
 
-      students = students.filter(student => {
-        const isPaid = student[feePaidKey.charAt(0).toLowerCase() + feePaidKey.slice(1)];
-        return feeStatusFilter === 'paid' ? isPaid : !isPaid;
+      students = students.filter((student) => {
+        const isPaid =
+          student[feePaidKey.charAt(0).toLowerCase() + feePaidKey.slice(1)];
+        return feeStatusFilter === "paid" ? isPaid : !isPaid;
       });
     }
+
+    if (searchStudent) {
+      students = students.filter((student) => {
+        const studentName = `${student.name}`.toLowerCase();
+        return studentName.includes(searchStudent.toLowerCase());
+      });
+    }
+    
     setFilteredStudents(students);
-  }, [allStudents, selectedTermId, feeStatusFilter, terms]);
+  }, [allStudents, selectedTermId, feeStatusFilter, terms, searchStudent]);
 
   const handleStudentDataRetrieval = async () => {
     setIsLoading(true);
@@ -65,22 +82,33 @@ const StudentsPage = () => {
         setTerms(response.data.terms || []);
       })
       .catch((error) => {
-        console.error('Error fetching students:', error);
-      }).finally(() => {
+        console.error("Error fetching students:", error);
+      })
+      .finally(() => {
         setIsLoading(false);
       });
   };
 
-  const selectedTerm = terms.find(t => t.id.toString() === selectedTermId.toString());
-  const selectedTermName = selectedTerm ? selectedTerm.name : '';
-  const termPrefix = selectedTerm ? selectedTerm.name.split(' ')[0] : '';
-  const isFeePaidKey = selectedTerm ? `is${termPrefix}TermFeePaid` : 'isFirstTermFeePaid';
-  const balanceKey = selectedTerm ? `${termPrefix.toLowerCase()}TermBalance` : 'firstTermBalance';
+  const selectedTerm = terms.find(
+    (t) => t.id.toString() === selectedTermId.toString()
+  );
+  const selectedTermName = selectedTerm ? selectedTerm.name : "";
+  const termPrefix = selectedTerm ? selectedTerm.name.split(" ")[0] : "";
+  const isFeePaidKey = selectedTerm
+    ? `is${termPrefix}TermFeePaid`
+    : "isFirstTermFeePaid";
+  const balanceKey = selectedTerm
+    ? `${termPrefix.toLowerCase()}TermBalance`
+    : "firstTermBalance";
 
-  const tableHeaders = ['Name', 'Fee Status', 'Balance', 'Actions'];
+  const searchedStudents = allStudents.filter(cls =>
+    cls.name.toLowerCase().includes(searchStudent.toLowerCase())
+  );
+  const tableHeaders = ["Name", "Fee Status", "Balance", "Actions"];
 
-  const tableRows = filteredStudents.map(s => {
-    const isPaid = s[isFeePaidKey.charAt(0).toLowerCase() + isFeePaidKey.slice(1)];
+  const tableRows = filteredStudents.map((s) => {
+    const isPaid =
+      s[isFeePaidKey.charAt(0).toLowerCase() + isFeePaidKey.slice(1)];
     const balance = s[balanceKey];
 
     return {
@@ -90,25 +118,28 @@ const StudentsPage = () => {
         <span
           key={`fee-status-${s.id}`}
           className={`px-2 py-1 rounded-full text-xs font-semibold ${
-            isPaid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+            isPaid ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
           }`}
         >
-          {isPaid ? 'Paid' : 'Unpaid'}
+          {isPaid ? "Paid" : "Unpaid"}
         </span>,
         `₦${(balance || 0).toLocaleString()}`,
       ],
       actions: (
         <div className="flex space-x-2">
           <button
-            onClick={() => { setEditingStudent(s); setIsModalOpen(true); }}
+            onClick={() => {
+              setEditingStudent(s);
+              setIsModalOpen(true);
+            }}
             className="px-3 py-1 bg-primary-orange text-white rounded hover:bg-opacity-80 transition-colors cursor-pointer flex items-center justify-center space-x-1"
             title="Edit Student"
           >
             <FaEdit className="inline-block mr-1" />
             <span>Edit</span>
-          </button> 
+          </button>
           <button
-            onClick={() => { }}
+            onClick={() => {}}
             className="px-3 py-1 bg-green-700 text-white rounded hover:bg-opacity-80 transition-colors cursor-pointer flex items-center justify-center space-x-1"
             title="Prepare Report Card"
           >
@@ -124,7 +155,7 @@ const StudentsPage = () => {
             <span>Delete</span>
           </button>
         </div>
-      )
+      ),
     };
   });
 
@@ -139,14 +170,14 @@ const StudentsPage = () => {
   };
 
   const handleDeleteStudent = async (studentId) => {
-    if (window.confirm('Are you sure you want to delete this student?')) {
+    if (window.confirm("Are you sure you want to delete this student?")) {
       try {
         await deleteStudentData(studentId);
-        toast.success('Student deleted successfully');
+        toast.success("Student deleted successfully");
         handleStudentDataRetrieval();
       } catch (error) {
-        toast.error('Failed to delete student');
-        console.error('Error deleting student:', error);
+        toast.error("Failed to delete student");
+        console.error("Error deleting student:", error);
       }
     }
   };
@@ -157,10 +188,16 @@ const StudentsPage = () => {
       formData.sessionId = sessionId;
       console.log("Submitting student data: ", formData);
       await submitStudentData(formData);
-      toast.success(editingStudent ? 'Student updated successfully' : 'Student added successfully');
+      toast.success(
+        editingStudent
+          ? "Student updated successfully"
+          : "Student added successfully"
+      );
     } catch (error) {
-      toast.error(editingStudent ? 'Failed to update student' : 'Failed to add student');
-      console.error('Error submitting student:', error);
+      toast.error(
+        editingStudent ? "Failed to update student" : "Failed to add student"
+      );
+      console.error("Error submitting student:", error);
     } finally {
       handleStudentDataRetrieval();
       closeModal();
@@ -189,26 +226,39 @@ const StudentsPage = () => {
           onClick={handleAddStudentClick}
           className="px-6 py-3 bg-primary-orange text-white font-medium rounded-lg shadow-md hover:bg-opacity-80 transition-colors cursor-pointer"
         >
-          <FaPlus className="inline-block mr-2" />Add New Student
+          <FaPlus className="inline-block mr-2" />
+          Add New Student
         </button>
       </div>
 
       <div className="flex items-center space-x-4 mb-4">
         <div>
-          <label htmlFor="term-filter" className="block text-sm font-medium text-gray-700">Filter by Term</label>
+          <label
+            htmlFor="term-filter"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Filter by Term
+          </label>
           <select
             id="term-filter"
             value={selectedTermId}
             onChange={(e) => setSelectedTermId(e.target.value)}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
           >
-            {terms.map(term => (
-              <option key={term.id} value={term.id}>{term.name}</option>
+            {terms.map((term) => (
+              <option key={term.id} value={term.id}>
+                {term.name}
+              </option>
             ))}
           </select>
         </div>
         <div>
-          <label htmlFor="fee-status-filter" className="block text-sm font-medium text-gray-700">Fee Status</label>
+          <label
+            htmlFor="fee-status-filter"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Fee Status
+          </label>
           <select
             id="fee-status-filter"
             value={feeStatusFilter}
@@ -221,7 +271,15 @@ const StudentsPage = () => {
           </select>
         </div>
       </div>
-
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search by student name..."
+          value={searchStudent}
+          onChange={(e) => setSearchStudent(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
+        />
+      </div>
       {filteredStudents.length > 0 ? (
         <div className="overflow-x-auto">
           <Table headers={tableHeaders} rows={tableRows} />
@@ -232,7 +290,11 @@ const StudentsPage = () => {
         </p>
       )}
 
-      <Modal isOpen={isModalOpen} onClose={closeModal} title={editingStudent ? 'Edit Student' : 'Add New Student'}>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={editingStudent ? "Edit Student" : "Add New Student"}
+      >
         <StudentForm
           onSubmit={handleSubmitStudent}
           classId={classId}

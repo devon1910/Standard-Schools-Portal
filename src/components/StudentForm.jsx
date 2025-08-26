@@ -77,7 +77,7 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
   useEffect(() => {
     // Update the LGAs dropdown when the state of origin changes
     if (formData.stateOfOrigin) {
-      const selectedState = nigerianData.states.find(s => s.name === formData.stateOfOrigin);
+      const selectedState = StudentFormInfoData.states.find(s => s.name === formData.stateOfOrigin);
       setLgAs(selectedState ? selectedState.lgAs : []);
       // Reset LGA field if the state changes to prevent invalid selection
       setFormData(prev => ({ ...prev, lgaOfOrigin: '' }));
@@ -135,7 +135,6 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
         />
       </div>
 
-      {/* --- New Fields --- */}
 
       {/* Admission Number & Year of Admission */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -166,6 +165,43 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
             onChange={handleChange}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
             placeholder="e.g., 2025"
+            min="1900"
+            max={new Date().getFullYear()}
+            required
+          />
+        </div>
+      </div>
+
+      {/* Admission Meta info */}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label htmlFor="classAtAdmission" className="block text-sm font-medium text-gray-700 mb-1">
+            Class At Admission
+          </label>
+          <input
+            type="text"
+            id="classAtAdmission"
+            name="classAtAdmission"
+            value={formData.classAtAdmission}
+            onChange={handleChange}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
+            placeholder="e.g., JSS1 A"
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="dateOfAdmission" className="block text-sm font-medium text-gray-700 mb-1">
+            Date Of Admission
+          </label>
+          <input
+            type="date"
+            id="dateOfAdmission"
+            name="dateOfAdmission"
+            value={formData.dateOfAdmission}
+            onChange={handleChange}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
+            placeholder="e.g 8/1/2025"
             min="1900"
             max={new Date().getFullYear()}
             required
