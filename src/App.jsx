@@ -13,6 +13,7 @@ import ClassesPage from "./pages/ClassesPage";
 import StudentsPage from "./pages/StudentsPage";
 import SessionsPage from "./pages/SessionsPage";
 import SubjectsPage from "./pages/SubjectsPage";
+import AllStudentsPage from "./pages/AllStudentsPage";
 import Login from "./pages/Login";
 import "./App.css";
 
@@ -66,6 +67,14 @@ function App() {
           element={
             <MainLayout>
               <StudentsPage />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/all-students"
+          element={
+            <MainLayout>
+              <AllStudentsPage />
             </MainLayout>
           }
         />

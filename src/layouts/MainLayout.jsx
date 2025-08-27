@@ -169,6 +169,7 @@ const MainLayout = ({ children }) => {
   const navItems = [
     { name: 'Questions Bank', path: '/questions', id: 'questions' },
     { name: 'Classes', path: '/classes', id: 'classes' },
+    { name: 'All Students', path: '/all-students', id: 'all-students' },
     { name: 'Subjects', path: '/subjects', id: 'subjects' },
     { name: 'Sessions', path: '/sessions', id: 'sessions' },
   ];

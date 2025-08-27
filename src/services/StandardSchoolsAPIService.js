@@ -46,3 +46,11 @@ export const deleteStudentData = (id) => API.delete(`${apiUrl}students/${id}`);
 export const deleteSubjectData = (id) => API.delete(`${apiUrl}subjects/${id}`);
 
 export const getStudentsData = (sessionId,classId) => API.get(`${apiUrl}students?sessionId=${sessionId}&classId=${classId}`); //API.get(`${apiUrl}students?termId=${termId}&classId=${classId}&sessionId=${sessionId}`);
+// Fetch all students, with optional search and pagination
+export const getAllStudents = ({ page = 1, pageSize = 20, search = '' } = {}) => {
+  const params = new URLSearchParams();
+  params.append('page', page);
+  params.append('pageSize', pageSize);
+  if (search) params.append('search', search);
+  return API.get(`${apiUrl}students/all?${params.toString()}`);
+};

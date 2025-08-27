@@ -26,7 +26,7 @@ const Table = ({ headers, rows }) => {
                     {item}
                   </td>
                 ))}
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
                   {row.actions}
                 </td>
               </tr>
