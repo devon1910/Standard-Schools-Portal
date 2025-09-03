@@ -27,7 +27,19 @@ export const getDashboardData = (filters={}) => {
         const queryString = params.toString();
         return API.get(`${apiUrl}genericData${queryString ? `?${queryString}` : ''}`);
 } 
-export const submitQuestionData = (formData) => API.post(`${apiUrl}questions`, formData);
+export const submitQuestionData = (formData) => {
+  const payload = {
+    id: formData.id,
+    subjectId: formData.subjectId,
+    classId: formData.classId,
+    type: formData.type,
+    termId: formData.termId,
+    sessionId: formData.sessionId,
+    // Store the Cloudinary URL in questionText for backward compatibility
+    questionURL: formData.questionURL,
+  };
+  return API.post(`${apiUrl}questions`, payload);
+};
 
 export const submitClassData = (formData) => API.post(`${apiUrl}classes`, formData);
 

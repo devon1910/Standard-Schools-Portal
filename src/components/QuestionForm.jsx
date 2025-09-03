@@ -15,11 +15,15 @@ const QuestionForm = ({
     termId: 0, // Default to current selected term
     sessionId: 0, // Default to current selected session
     questionText: "",
+    questionFile: null,
   });
+
+  const [uploadError, setUploadError] = useState("");
+  const [uploadedPreviewUrl, setUploadedPreviewUrl] = useState("");
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      setFormData({ ...initialData, questionFile: null });
     } else {
       setFormData({
         subjectId: "",
@@ -28,6 +32,7 @@ const QuestionForm = ({
         termId: "1st",
         sessionId: "",
         questionText: "",
+        questionFile: null,
       });
     }
   }, [initialData]);
@@ -62,7 +67,53 @@ const QuestionForm = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    // If a new file is selected, send multipart FormData to backend
+    if (formData.questionURL instanceof File || formData.questionURL) {
+      const multipart = new FormData();
+      multipart.append("subjectId", formData.subjectId);
+      multipart.append("classId", formData.classId);
+      multipart.append("type", formData.type);
+      multipart.append("termId", formData.termId);
+      multipart.append("sessionId", formData.sessionId);
+      multipart.append("questionURL", formData.questionURL);
+      onSubmit(multipart);
+      return;
+    }
+
+    // Otherwise submit as JSON (e.g., when editing without changing file)
     onSubmit(formData);
+  };
+
+  // useEffect(() => {
+  //   if (formData?.questionText && typeof formData.questionText === "string" && formData.questionText.startsWith("http")) {
+  //     setUploadedPreviewUrl(formData.questionText);
+  //   }
+  // }, [formData.questionText]);
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const maxBytes = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxBytes) {
+      setUploadError("File too large. Max size is 10MB.");
+      e.target.value = "";
+      return;
+    }
+    // Ensure identifiers are selected to associate file properly
+    const { subjectId, classId, sessionId, termId, type } = formData;
+    if (!subjectId || !classId || !sessionId || !termId || (type === "" || type === null || typeof type === "undefined")) {
+      setUploadError("Please select Subject, Class, Session, Term and Type before selecting a file.");
+      e.target.value = "";
+      return;
+    }
+    setUploadError("");
+    setFormData((prev) => ({ ...prev, questionURL: file }));
+    try {
+      const objectUrl = URL.createObjectURL(file);
+      setUploadedPreviewUrl(objectUrl);
+    } catch {
+      setUploadedPreviewUrl("");
+    }
   };
 
   return (
@@ -189,27 +240,32 @@ const QuestionForm = ({
 
       <div>
         <label
-          htmlFor="questionText"
+          htmlFor="questionFile"
           className="block text-sm font-medium text-gray-700 mb-1"
         >
-          Question
+          Question (Upload file to server. Max 10MB.)
         </label>
-        <textarea
-          id="questionText"
-          name="questionText"
-          value={formData.questionText}
-          onChange={handleChange}
-          rows="4"
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
-          placeholder="Enter the question here..."
-          required
-        ></textarea>
+        <input
+          id="questionFile"
+          name="questionFile"
+          type="file"
+          accept="image/*,application/pdf"
+          onChange={handleFileChange}
+          disabled={!formData.subjectId || !formData.classId || !formData.sessionId || !formData.termId || (formData.type === "" || formData.type === null || typeof formData.type === "undefined")}
+          className="mt-1 block w-full text-sm text-gray-700 disabled:opacity-60 disabled:cursor-not-allowed file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-orange file:text-white hover:file:bg-opacity-80"
+        />
+        {uploadError && (
+          <p className="mt-2 text-sm text-red-600">{uploadError}</p>
+        )}
+       
+        {/* Keep the URL if editing and not changing file */}
+        <input type="hidden" name="questionURL" value={formData.questionURL} />
       </div>
 
       <div className="flex justify-end">
         <button
           type="submit"
-          className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-orange hover:bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-orange transition-colors cursior-pointer"
+          className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-orange hover:bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-orange transition-colors cursior-pointer disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {initialData ? "Update Question" : "Add Question"}
         </button>
