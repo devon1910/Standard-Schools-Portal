@@ -35,10 +35,14 @@ export const submitQuestionData = (formData) => {
     type: formData.type,
     termId: formData.termId,
     sessionId: formData.sessionId,
-    // Store the Cloudinary URL in questionText for backward compatibility
-    questionURL: formData.questionURL,
+    questionFile: formData.questionFile,
   };
-  return API.post(`${apiUrl}questions`, payload);
+  console.log('Submitting question data:', payload);
+  return API.post(`${apiUrl}questions`, payload, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
 };
 
 export const submitClassData = (formData) => API.post(`${apiUrl}classes`, formData);

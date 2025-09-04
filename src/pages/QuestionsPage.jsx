@@ -44,20 +44,22 @@ const QuestionsPage = () => {
 
   const tableRows = dashboardData.questions.items.map(q => ({
     id: q.id,
-    data: [q.subject.name, q.questionText],
+    data: [q.subject.name, q.questionURL],
     actions: (
       <div className="flex space-x-2">
         <button
           onClick={() => {
+            
             setEditingQuestion({
               id: q.id,
-              questionText: q.questionText,
+              questionFile: q.questionURL,
               subjectId: q.subject.id,
               classId: q.class.id,
               sessionId: q.session.id,
               termId: q.term.id,
               type: q.type
             });
+
             setIsModalOpen(true);
           }}
           className="px-3 py-1 bg-primary-orange text-white rounded hover:bg-opacity-80 transition-colors cursor-pointer flex items-center justify-center space-x-1"

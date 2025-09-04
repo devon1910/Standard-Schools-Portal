@@ -14,7 +14,6 @@ const QuestionForm = ({
     type: 0, // 'CA' or 'Exam'
     termId: 0, // Default to current selected term
     sessionId: 0, // Default to current selected session
-    questionText: "",
     questionFile: null,
   });
 
@@ -31,7 +30,6 @@ const QuestionForm = ({
         type: "0",
         termId: "1st",
         sessionId: "",
-        questionText: "",
         questionFile: null,
       });
     }
@@ -68,15 +66,16 @@ const QuestionForm = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     // If a new file is selected, send multipart FormData to backend
-    if (formData.questionURL instanceof File || formData.questionURL) {
-      const multipart = new FormData();
-      multipart.append("subjectId", formData.subjectId);
-      multipart.append("classId", formData.classId);
-      multipart.append("type", formData.type);
-      multipart.append("termId", formData.termId);
-      multipart.append("sessionId", formData.sessionId);
-      multipart.append("questionURL", formData.questionURL);
-      onSubmit(multipart);
+    if (formData.questionFile instanceof File || formData.questionFile) {
+      // const multipart = new FormData();
+      // multipart.append("subjectId", formData.subjectId);
+      // multipart.append("classId", formData.classId);
+      // multipart.append("type", formData.type);
+      // multipart.append("termId", formData.termId);
+      // multipart.append("sessionId", formData.sessionId);
+      // multipart.append("questionFile", formData.questionFile);
+      // console.log(multipart);
+      onSubmit(formData);
       return;
     }
 
@@ -107,7 +106,7 @@ const QuestionForm = ({
       return;
     }
     setUploadError("");
-    setFormData((prev) => ({ ...prev, questionURL: file }));
+    setFormData((prev) => ({ ...prev, questionFile: file }));
     try {
       const objectUrl = URL.createObjectURL(file);
       setUploadedPreviewUrl(objectUrl);
@@ -252,14 +251,12 @@ const QuestionForm = ({
           accept="image/*,application/pdf"
           onChange={handleFileChange}
           disabled={!formData.subjectId || !formData.classId || !formData.sessionId || !formData.termId || (formData.type === "" || formData.type === null || typeof formData.type === "undefined")}
-          className="mt-1 block w-full text-sm text-gray-700 disabled:opacity-60 disabled:cursor-not-allowed file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-orange file:text-white hover:file:bg-opacity-80"
+          className="mt-1 block w-full text-sm text-gray-700 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-orange file:text-white hover:file:bg-opacity-80"
         />
         {uploadError && (
           <p className="mt-2 text-sm text-red-600">{uploadError}</p>
         )}
        
-        {/* Keep the URL if editing and not changing file */}
-        <input type="hidden" name="questionURL" value={formData.questionURL} />
       </div>
 
       <div className="flex justify-end">
