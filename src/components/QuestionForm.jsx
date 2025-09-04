@@ -248,8 +248,9 @@ const QuestionForm = ({
           id="questionFile"
           name="questionFile"
           type="file"
-          accept="image/*,application/pdf"
+          required
           onChange={handleFileChange}
+          accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.bmp,.webp,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*"
           disabled={!formData.subjectId || !formData.classId || !formData.sessionId || !formData.termId || (formData.type === "" || formData.type === null || typeof formData.type === "undefined")}
           className="mt-1 block w-full text-sm text-gray-700 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-primary-orange file:text-white hover:file:bg-opacity-80"
         />
