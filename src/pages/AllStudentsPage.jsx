@@ -52,6 +52,13 @@ const AllStudentsPage = () => {
     fetchStudents();
   }, [page, debouncedSearch]);
 
+  function formatDate(dateStr) {
+    if (!dateStr) return '—';
+    const date = new Date(dateStr);
+    if (isNaN(date)) return dateStr;
+    return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
   // Initialize default dropdown selections when options load
   useEffect(() => {
     if (sessions.length && !selectedSessionId) setSelectedSessionId(sessions[0].id);
@@ -166,7 +173,7 @@ const AllStudentsPage = () => {
               </div>
               <div>
                 <div className="text-gray-500">Date of Birth</div>
-                <div className="font-medium">{selectedStudent.dob || '—'}</div>
+                <div className="font-medium">{formatDate(selectedStudent.dob) || selectedStudent.dob || '—'}</div>
               </div>
               <div>
                 <div className="text-gray-500">Parent Name</div>
@@ -183,6 +190,30 @@ const AllStudentsPage = () => {
               <div>
                 <div className="text-gray-500">Religion</div>
                 <div className="font-medium">{selectedStudent.parentReligion || '—'}</div>
+              </div>
+              <div>
+                <div className="text-gray-500">LGA</div>
+                <div className="font-medium">{selectedStudent.lgaOfOrigin || '—'}</div>
+              </div>
+              <div>
+                <div className="text-gray-500">State of Origin</div>
+                <div className="font-medium">{selectedStudent.stateOfOrigin || '—'}</div>
+              </div>
+              <div>
+                <div className="text-gray-500">Tribe</div>
+                <div className="font-medium">{selectedStudent.tribe || '—'}</div>
+              </div>
+              <div>
+                <div className="text-gray-500">Class At Admission</div>
+                <div className="font-medium">{selectedStudent.classAtAdmission || '—'}</div>
+              </div>
+              <div>
+                <div className="text-gray-500">Year Of Admission</div>
+                <div className="font-medium">{selectedStudent.yearOfAdmission || '—'}</div>
+              </div> 
+              <div>
+                <div className="text-gray-500">Date Of Admission</div>
+                <div className="font-medium">{selectedStudent.dateOfAdmission || '—'}</div>
               </div>
             </div>
           </div>
