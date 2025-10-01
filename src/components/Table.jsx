@@ -1,6 +1,6 @@
 
 
-const Table = ({ headers, rows }) => {
+const Table = ({ headers, rows, isFromQuestionBank=false }) => {
   return (
     <div className="overflow-x-auto rounded-lg shadow-sm border border-gray-200">
       <table className="min-w-full divide-y divide-gray-200">
@@ -21,11 +21,23 @@ const Table = ({ headers, rows }) => {
           {rows.length > 0 ? (
             rows.map((row) => (
               <tr key={row.id}>
-                {row.data.map((item, index) => (
-                  <td key={index} className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
-                    {item}
-                  </td>
-                ))}
+                {row.data.map((item, index) => {
+                  // If isFromQuestionBank and this is the 'Question' column (index 1), render as a link
+                  if (isFromQuestionBank && index === 1 && item) {
+                    return (
+                      <td key={index} className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                        <a href={item} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">
+                          View Question
+                        </a>
+                      </td>
+                    );
+                  }
+                  return (
+                    <td key={index} className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                      {item}
+                    </td>
+                  );
+                })}
                 <td className="px-6 py-4 whitespace-nowrap text-left text-sm font-medium">
                   {row.actions}
                 </td>

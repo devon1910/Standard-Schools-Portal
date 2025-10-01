@@ -98,8 +98,9 @@ const QuestionsPage = () => {
       closeModal();
       refetchData();
     } catch (error) {
-      toast.error(editingQuestion ? 'Failed to update question' : 'Failed to add question');
+      toast.error(editingQuestion ? 'Failed to update question' : `Failed to add question: ${error?.response?.data}`);
       console.error('Error submitting question:', error);
+      setIsLoading(false)
     }
   };
 
@@ -332,7 +333,7 @@ const QuestionsPage = () => {
       {dashboardData.questions.items.length > 0 ? (
         <>
           <div className="overflow-x-auto">
-            <Table headers={tableHeaders} rows={tableRows} />
+            <Table headers={tableHeaders} rows={tableRows} isFromQuestionBank={true} />
           </div>
           {renderPagination()}
         </>

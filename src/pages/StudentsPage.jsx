@@ -186,7 +186,6 @@ const StudentsPage = () => {
     try {
       setIsLoading(true);
       formData.sessionId = sessionId;
-      console.log("Submitting student data: ", formData);
       await submitStudentData(formData);
       toast.success(
         editingStudent

@@ -37,7 +37,6 @@ export const submitQuestionData = (formData) => {
     sessionId: formData.sessionId,
     questionFile: formData.questionFile,
   };
-  console.log('Submitting question data:', payload);
   return API.post(`${apiUrl}questions`, payload, {
     headers: {
       'Content-Type': 'multipart/form-data'
