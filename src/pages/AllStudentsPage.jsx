@@ -40,7 +40,7 @@ const AllStudentsPage = () => {
         const data = resp.data || {};
         const items =  data.studentRecords || [];
         setStudents(items);
-        setTotalRecords(data.totalRecords || data.total || items.length || 0);
+        setTotalRecords(data.count || 0);
       } catch (e) {
         console.error('Failed to fetch all students', e);
         setStudents([]);
@@ -280,7 +280,7 @@ const AllStudentsPage = () => {
                 const data = resp.data || {};
                 const items = data.studentRecords || [];
                 setStudents(items);
-                setTotalRecords(data.totalRecords || data.total || items.length || 0);
+                setTotalRecords(data.count);
                 setIsAddModalOpen(false);
               } catch (error) {
                 console.error('Error submitting student:', error);
