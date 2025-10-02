@@ -112,9 +112,39 @@ const DashboardPage = () => {
       </div>
     );
   }
+  // Calculate totals
+  const totalStudents = studentsPerClassData.reduce((sum, c) => sum + (c.studentCount || 0), 0);
+  let totalPaid = 0;
+  let totalUnpaid = 0;
+  if (selectedTerm) {
+    // When term is selected, use paidCount/unpaidCount
+    totalPaid = feeStatusPerClassData.reduce((sum, c) => sum + (c.paidCount || 0), 0);
+    totalUnpaid = feeStatusPerClassData.reduce((sum, c) => sum + (c.unpaidCount || 0), 0);
+  } else {
+    // When no term is selected, sum all paid/unpaid for all terms
+    totalPaid = feeStatusPerClassData.reduce((sum, c) => sum + ((c.firstTermPaid || 0) + (c.secondTermPaid || 0) + (c.thirdTermPaid || 0)), 0);
+    totalUnpaid = feeStatusPerClassData.reduce((sum, c) => sum + ((c.firstTermUnpaid || 0) + (c.secondTermUnpaid || 0) + (c.thirdTermUnpaid || 0)), 0);
+  }
+
   return (
     <div className="space-y-8">
       <h2 className="text-3xl font-bold text-primary-orange mb-6">Dashboard Metrics</h2>
+
+      {/* Summary Totals */}
+      <div className="flex flex-wrap gap-6 mb-6">
+        <div className="bg-white rounded-lg shadow p-4 min-w-[180px]">
+          <div className="text-gray-500 text-xs mb-1">Total Students</div>
+          <div className="text-2xl font-bold text-primary-orange">{totalStudents}</div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4 min-w-[180px]">
+          <div className="text-gray-500 text-xs mb-1">Total Paid{selectedTerm ? '' : ' (All Terms)'}</div>
+          <div className="text-2xl font-bold text-green-600">{totalPaid}</div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4 min-w-[180px]">
+          <div className="text-gray-500 text-xs mb-1">Total Unpaid{selectedTerm ? '' : ' (All Terms)'}</div>
+          <div className="text-2xl font-bold text-red-500">{totalUnpaid}</div>
+        </div>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4 mb-6">
