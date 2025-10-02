@@ -107,9 +107,17 @@ const StudentsPage = () => {
   const tableHeaders = ["Name", "Fee Status", "Balance", "Actions"];
 
   const tableRows = filteredStudents.map((s) => {
-    const isPaid =
-      s[isFeePaidKey.charAt(0).toLowerCase() + isFeePaidKey.slice(1)];
-    const balance = s[balanceKey];
+
+    console.log("s: ",s)
+    const test1 = isFeePaidKey.replace(" ","").replace("\n","")
+    const test2= balanceKey.replace(" ","").replace("\n","")
+    const isPaid =  s[test1];
+    const balance = s[test2];
+    console.log("isPaid: ",isPaid)
+    console.log("banlance: ",balance)
+    console.log("gender: ",s["gender"])
+
+
 
     return {
       id: s.id,

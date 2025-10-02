@@ -35,7 +35,9 @@ const MainLayout = ({ children }) => {
       items: [],
       totalRecords: 0,
       totalPages: 0
-    }
+    },
+    studentsPerClass: [],
+    feePaymentStatusPerClass: []
   });
 
   // Filter state
@@ -92,7 +94,9 @@ const MainLayout = ({ children }) => {
           totalRecords: data.questions.totalRecords || data.questions.length || 0,
           totalPages: data.questions.totalPages || 
             Math.ceil((data.questions.length || 0) / apiFilters.pageSize)
-        }
+        },
+        studentsPerClass : data.studentsPerClass || [],
+        feePaymentStatusPerClass : data.feePaymentStatusPerClass || []
       });
     } catch (error) {
       console.error('Error fetching dashboard data:', error);

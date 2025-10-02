@@ -1,76 +1,117 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useDashboardData } from '../layouts/MainLayout';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
 const COLORS = ['#f0a150', '#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
+//data from server structure
+// "studentsPerClass": [
+//         {
+//             "classId": 107,
+//             "className": "J.S.S 2B",
+//             "studentCount": 6
+//         },
+//         {
+//             "classId": 108,
+//             "className": "J.S S.3A",
+//             "studentCount": 1
+//         },
+//         {
+//             "classId": 1,
+//             "className": "Nursery 1A",
+//             "studentCount": 3
+//         },
+//         {
+//             "classId": 111,
+//             "className": "S.S.S. 1B",
+//             "studentCount": 4
+//         },
+//     ]
 
-// Expanded dummy data for 20+ classes (JSS1A-JSS3D, SSS1A-SSS3D)
-const classNames = [
-  'JSS1A', 'JSS1B', 'JSS1C', 'JSS1D',
-  'JSS2A', 'JSS2B', 'JSS2C', 'JSS2D',
-  'JSS3A', 'JSS3B', 'JSS3C', 'JSS3D',
-  'SSS1A', 'SSS1B', 'SSS1C', 'SSS1D',
-  'SSS2A', 'SSS2B', 'SSS2C', 'SSS2D',
-  'SSS3A', 'SSS3B', 'SSS3C', 'SSS3D'
-];
-const sessions = ['2023/2024', '2024/2025'];
-const terms = ['First Term', 'Second Term', 'Third Term'];
-const genders = ['Male', 'Female'];
+//data from server structure when no filter is selected
+//"feePaymentStatusPerClass": [
+    //     {
+    //         "classId": 107,
+    //         "className": "J.S.S 2B",
+    //         "firstTermPaid": 4,
+    //         "firstTermUnpaid": 2,
+    //         "secondTermPaid": 0,
+    //         "secondTermUnpaid": 6,
+    //         "thirdTermPaid": 0,
+    //         "thirdTermUnpaid": 6,
+    //         "totalStudents": 6
+    //     },
+    //     {
+    //         "classId": 108,
+    //         "className": "J.S S.3A",
+    //         "firstTermPaid": 0,
+    //         "firstTermUnpaid": 1,
+    //         "secondTermPaid": 0,
+    //         "secondTermUnpaid": 1,
+    //         "thirdTermPaid": 0,
+    //         "thirdTermUnpaid": 1,
+    //         "totalStudents": 1
+    //     },
+    //     {
+    //         "classId": 1,
+    //         "className": "Nursery 1A",
+    //         "firstTermPaid": 2,
+    //         "firstTermUnpaid": 1,
+    //         "secondTermPaid": 0,
+    //         "secondTermUnpaid": 3,
+    //         "thirdTermPaid": 0,
+    //         "thirdTermUnpaid": 3,
+    //         "totalStudents": 3
+    //     },
+    // ]
 
-// Generate 200+ students randomly distributed
-const dummyStudents = Array.from({ length: 220 }, (_, i) => {
-  const classIdx = Math.floor(Math.random() * classNames.length);
-  const sessionIdx = Math.floor(Math.random() * sessions.length);
-  const termIdx = Math.floor(Math.random() * terms.length);
-  const genderIdx = Math.floor(Math.random() * genders.length);
-  return {
-    id: i + 1,
-    name: `Student${i + 1}`,
-    gender: genders[genderIdx],
-    class: classNames[classIdx],
-    session: sessions[sessionIdx],
-    term: terms[termIdx],
-    feePaid: Math.random() > 0.35 // ~65% paid
-  };
-});
-
-
-// 2. Number of students who have paid/unpaid in each class
-const feeStatusPerClass = {};
-dummyStudents.forEach(s => {
-  if (!feeStatusPerClass[s.class]) feeStatusPerClass[s.class] = { class: s.class, paid: 0, unpaid: 0 };
-  if (s.feePaid) feeStatusPerClass[s.class].paid += 1;
-  else feeStatusPerClass[s.class].unpaid += 1;
-});
+    //structure when term filter is selected
+    //"feePaymentStatusPerClass": [
+    //     {
+    //         "classId": 107,
+    //         "className": "J.S.S 2B",
+    //         "paidCount: 3",
+     //           "unpaidCount": 3,
+    //         "totalStudents": 6
+    //     },
+    //     {
+    //         "classId": 108,
+    //         "className": "J.S S.3A",
+    //         "paidCount: 5"
+     //           "unpaidCount": 5,
+    //         "totalStudents": 10
+    //     },
+    //    
+    // ]
 
 
 
 const DashboardPage = () => {
-  const [selectedSession, setSelectedSession] = useState('');
-  const [selectedTerm, setSelectedTerm] = useState('');
+  const { dashboardData, filters, updateFilters, refetchData, isLoading } = useDashboardData();
+  const sessions = dashboardData.sessions || [];
+  const terms = dashboardData.terms || [];
+  const studentsPerClassData = dashboardData.studentsPerClass || [];
+  const feeStatusPerClassData = dashboardData.feePaymentStatusPerClass || [];
 
-  // Filter students by session and term
-  const filteredStudents = dummyStudents.filter(s =>
-    (selectedSession ? s.session === selectedSession : true) &&
-    (selectedTerm ? s.term === selectedTerm : true)
-  );
+  // Local state for filters
+  const [selectedSession, setSelectedSession] = useState(filters.sessionId || '');
+  const [selectedTerm, setSelectedTerm] = useState(filters.termId || '');
 
-  // Recompute metrics based on filtered students
-  const studentsPerClass = filteredStudents.reduce((acc, s) => {
-    acc[s.class] = (acc[s.class] || 0) + 1;
-    return acc;
-  }, {});
-  const studentsPerClassData = Object.entries(studentsPerClass).map(([name, value]) => ({ class: name, count: value }));
+  // When filter changes, update context and refetch
+  useEffect(() => {
+    updateFilters({ sessionId: selectedSession, termId: selectedTerm });
+    refetchData({ sessionId: selectedSession, termId: selectedTerm });
+    // eslint-disable-next-line
+  }, [selectedSession, selectedTerm]);
 
-  const feeStatusPerClass = {};
-  filteredStudents.forEach(s => {
-    if (!feeStatusPerClass[s.class]) feeStatusPerClass[s.class] = { class: s.class, paid: 0, unpaid: 0 };
-    if (s.feePaid) feeStatusPerClass[s.class].paid += 1;
-    else feeStatusPerClass[s.class].unpaid += 1;
-  });
-  const feeStatusPerClassData = Object.values(feeStatusPerClass);
-
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-primary-orange"></div>
+      </div>
+    );
+  }
   return (
     <div className="space-y-8">
       <h2 className="text-3xl font-bold text-primary-orange mb-6">Dashboard Metrics</h2>
@@ -86,7 +127,7 @@ const DashboardPage = () => {
           >
             <option value="">All Sessions</option>
             {sessions.map(session => (
-              <option key={session} value={session}>{session}</option>
+              <option key={session.id || session} value={session.id || session}>{session.name || session}</option>
             ))}
           </select>
         </div>
@@ -99,7 +140,7 @@ const DashboardPage = () => {
           >
             <option value="">All Terms</option>
             {terms.map(term => (
-              <option key={term} value={term}>{term}</option>
+              <option key={term.id || term} value={term.id || term}>{term.name || term}</option>
             ))}
           </select>
         </div>
@@ -108,40 +149,57 @@ const DashboardPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
         {/* Students per Class (Horizontal Bar Chart) */}
-        <div className="bg-white rounded-lg shadow p-6">
+
+        {studentsPerClassData.length > 0 && <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-xl font-semibold mb-4">Number of Students per Class</h3>
           <ResponsiveContainer width="100%" height={studentsPerClassData.length * 22 + 60}>
             <BarChart
-              data={studentsPerClassData.sort((a, b) => b.count - a.count)}
+              data={studentsPerClassData.slice().sort((a, b) => b.studentCount - a.studentCount)}
               layout="vertical"
               margin={{ left: 60, right: 30, top: 20, bottom: 20 }}
             >
               <XAxis type="number" allowDecimals={false} />
-              <YAxis type="category" dataKey="class" width={80} />
+              <YAxis type="category" dataKey="className" width={120} />
               <Tooltip formatter={(value) => [`${value} students`, 'Count']} />
-              <Bar dataKey="count" fill="#f0a150" />
+              <Bar dataKey="studentCount" fill="#f0a150" />
             </BarChart>
           </ResponsiveContainer>
-        </div>
+        </div> }
+        
 
         {/* Fee Payment Status per Class (Grouped Horizontal Bar Chart) */}
-        <div className="bg-white rounded-lg shadow p-6">
+         {feeStatusPerClassData.length > 0 &&
+           <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-xl font-semibold mb-4">Fee Payment Status per Class</h3>
           <ResponsiveContainer width="100%" height={feeStatusPerClassData.length * 22 + 60}>
             <BarChart
-              data={feeStatusPerClassData.sort((a, b) => b.paid + b.unpaid - (a.paid + a.unpaid))}
+              data={feeStatusPerClassData.slice()}
               layout="vertical"
               margin={{ left: 60, right: 30, top: 20, bottom: 20 }}
             >
               <XAxis type="number" allowDecimals={false} />
-              <YAxis type="category" dataKey="class" width={80} />
-              <Tooltip formatter={(value, name) => [`${value} students`, name.charAt(0).toUpperCase() + name.slice(1)]} />
+              <YAxis type="category" dataKey="className" width={120} />
+              <Tooltip />
               <Legend />
-              <Bar dataKey="paid" fill="#82ca9d" name="Paid" />
-              <Bar dataKey="unpaid" fill="#ff8042" name="Unpaid" />
+              {/* If term filter is selected, use paidCount/unpaidCount, else show all terms */}
+              {selectedTerm
+                ? [
+                    <Bar key="paid" dataKey="paidCount" fill="#82ca9d" name="Paid" />,
+                    <Bar key="unpaid" dataKey="unpaidCount" fill="#ff8042" name="Unpaid" />
+                  ]
+                : [
+                    <Bar key="firstTermPaid" dataKey="firstTermPaid" fill="#82ca9d" name="First Term Paid" />,
+                    <Bar key="firstTermUnpaid" dataKey="firstTermUnpaid" fill="#ff8042" name="First Term Unpaid" />,
+                    <Bar key="secondTermPaid" dataKey="secondTermPaid" fill="#0088FE" name="Second Term Paid" />,
+                    <Bar key="secondTermUnpaid" dataKey="secondTermUnpaid" fill="#FFBB28" name="Second Term Unpaid" />,
+                    <Bar key="thirdTermPaid" dataKey="thirdTermPaid" fill="#00C49F" name="Third Term Paid" />,
+                    <Bar key="thirdTermUnpaid" dataKey="thirdTermUnpaid" fill="#8884d8" name="Third Term Unpaid" />
+                  ]}
             </BarChart>
           </ResponsiveContainer>
         </div>
+        }
+       
 
         {/* Question Bank: Records per Session */}
         {/* <div className="bg-white rounded-lg shadow p-6">
