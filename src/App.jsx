@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
 import MainLayout from "./layouts/MainLayout";
 import QuestionsPage from "./pages/QuestionsPage";
 import ClassesPage from "./pages/ClassesPage";
@@ -14,6 +15,7 @@ import StudentsPage from "./pages/StudentsPage";
 import SessionsPage from "./pages/SessionsPage";
 import SubjectsPage from "./pages/SubjectsPage";
 import AllStudentsPage from "./pages/AllStudentsPage";
+import DashboardPage from "./pages/DashboardPage";
 import Login from "./pages/Login";
 import "./App.css";
 
@@ -42,7 +44,15 @@ function App() {
           path="/"
           element={
             <MainLayout>
-              <Navigate to="/login" replace />
+              <Navigate to="/dashboard" replace />
+            </MainLayout>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <MainLayout>
+              <DashboardPage />
             </MainLayout>
           }
         />

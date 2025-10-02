@@ -27,6 +27,8 @@ export const getDashboardData = (filters={}) => {
         const queryString = params.toString();
         return API.get(`${apiUrl}genericData${queryString ? `?${queryString}` : ''}`);
 } 
+
+
 export const submitQuestionData = (formData) => {
   const payload = {
     id: formData.id,
