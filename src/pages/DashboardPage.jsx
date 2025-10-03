@@ -147,7 +147,8 @@ const DashboardPage = () => {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6">
+      {studentsPerClassData.length > 0 || feeStatusPerClassData.length > 0 &&
+       <div className="flex flex-wrap gap-4 mb-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Session</label>
           <select
@@ -174,7 +175,8 @@ const DashboardPage = () => {
             ))}
           </select>
         </div>
-      </div>
+      </div>}
+     
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
