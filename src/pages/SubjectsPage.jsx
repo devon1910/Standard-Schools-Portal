@@ -25,7 +25,6 @@ const SubjectsPage = () => {
       setIsLoading(true);
       deleteSubjectData(subjectId)
         .then((response) => {
-          console.log('response: ', response);
           window.location.reload();
         })
         .catch((error) => {
@@ -78,7 +77,6 @@ const SubjectsPage = () => {
     setIsLoading(true);
     submitSubjectData(formData)
       .then((response) => {
-        console.log('response: ', response);
         window.location.reload();
       })
       .catch((error) => {

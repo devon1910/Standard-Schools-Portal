@@ -55,7 +55,6 @@ const SessionsPage = () => {
   const handleSessionFormSubmit = (formData) => {
     setIsLoading(true);
    submitSessionData(formData).then((response) => {
-     console.log('response: ', response);
      window.location.reload();
    }).catch((error) => {
      console.error('Error submitting session:', error);
@@ -70,7 +69,6 @@ const SessionsPage = () => {
     if (window.confirm('Are you sure you want to delete this session?')) {
       setIsLoading(true);
       deleteSessionData(sessionId).then((response) => {
-      console.log('response: ', response);
       window.location.reload();
     })
     }

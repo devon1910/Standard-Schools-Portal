@@ -108,14 +108,10 @@ const StudentsPage = () => {
 
   const tableRows = filteredStudents.map((s) => {
 
-    console.log("s: ",s)
     const test1 = isFeePaidKey.replace(" ","").replace("\n","")
     const test2= balanceKey.replace(" ","").replace("\n","")
     const isPaid =  s[test1];
     const balance = s[test2];
-    console.log("isPaid: ",isPaid)
-    console.log("banlance: ",balance)
-    console.log("gender: ",s["gender"])
 
 
 

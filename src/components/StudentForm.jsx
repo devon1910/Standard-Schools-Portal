@@ -1,75 +1,101 @@
-import React, { useState, useEffect } from 'react';
-import StudentFormInfoData from '../constants/StudentFormInfoData';
+import React, { useState, useEffect } from "react";
+import StudentFormInfoData from "../constants/StudentFormInfoData";
 
-const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selectedTermName, selectedTermId }) => {
+const StudentForm = ({
+  onSubmit,
+  classId,
+  selectedSession,
+  initialData,
+  selectedTermName,
+  selectedTermId,
+}) => {
   const [formData, setFormData] = useState({
-    name: '',
+    name: "",
     id: 0,
     classId: classId,
     sessionId: selectedSession,
     isFeePaid: false,
-    balance: '',
-    gender: '',
-    dob: '',
-    tribe: '',
-    stateOfOrigin: '',
-    lgaOfOrigin: '',
-    classAtAdmission: '',
-    dateOfAdmission: '',
-    admissionNumber: '',
-    yearOfAdmission: '',
-    parentName: '',
-    parentAddress: '',
-    parentPhone: '',
-    parentReligion: ''
+    balance: "",
+    gender: "",
+    dob: "",
+    tribe: "",
+    stateOfOrigin: "",
+    lgaOfOrigin: "",
+    classAtAdmission: "",
+    dateOfAdmission: "",
+    admissionNumber: "",
+    yearOfAdmission: "",
+    parentName: "",
+    parentAddress: "",
+    parentPhone: "",
+    parentReligion: "",
   });
 
   const [lgAs, setLgAs] = useState([]);
+
+  function getTermFeePaidBalanceStatus(option) {
+    if (option === "fee") {
+      if (selectedTermName.trim() === "First")
+        return initialData.isFirstTermFeePaid;
+      else if (selectedTermName.trim() === "Second")
+        return initialData.isSecondTermFeePaid;
+      else if (selectedTermName.trim() === "Third")
+        return initialData.isThirdTermFeePaid;
+      else false;
+    }
+    if (selectedTermName.trim() === "First")
+      return initialData.firstTermBalance;
+    else if (selectedTermName.trim() === "Second")
+      return initialData.secondTermBalance;
+    else if (selectedTermName.trim() === "Third")
+      return initialData.thirdTermBalance;
+    else 0;
+  }
 
   useEffect(() => {
     if (initialData) {
       setFormData({
         ...initialData,
-        isFeePaid: initialData.isFeePaid !== undefined ? initialData.isFeePaid : false,
-        balance: initialData.balance !== undefined ? initialData.balance : '',
+        isFeePaid: getTermFeePaidBalanceStatus("fee"),
+        balance: getTermFeePaidBalanceStatus("balance"),
         // Initialize new fields from initialData
-        gender: initialData.gender || '',
-        dob: initialData.dob || '',
-        tribe: initialData.tribe || '',
-        stateOfOrigin: initialData.stateOfOrigin || '',
-        lgaOfOrigin: initialData.lgaOfOrigin || '',
-        classAtAdmission: initialData.classAtAdmission || '',
-        dateOfAdmission: initialData.dateOfAdmission || '',
-        admissionNumber: initialData.admissionNumber || '',
-        yearOfAdmission: initialData.yearOfAdmission || '',
-        parentName: initialData.parentName || '',
-        parentAddress: initialData.parentAddress || '',
-        parentPhone: initialData.parentPhone || '',
-        parentReligion: initialData.parentReligion || ''
+        gender: initialData.gender || "",
+        dob: initialData.dob || "",
+        tribe: initialData.tribe || "",
+        stateOfOrigin: initialData.stateOfOrigin || "",
+        lgaOfOrigin: initialData.lgaOfOrigin || "",
+        classAtAdmission: initialData.classAtAdmission || "",
+        dateOfAdmission: initialData.dateOfAdmission || "",
+        admissionNumber: initialData.admissionNumber || "",
+        yearOfAdmission: initialData.yearOfAdmission || "",
+        parentName: initialData.parentName || "",
+        parentAddress: initialData.parentAddress || "",
+        parentPhone: initialData.parentPhone || "",
+        parentReligion: initialData.parentReligion || "",
       });
     } else {
       // Reset all fields when no initialData is provided
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        name: '',
+        name: "",
         id: 0,
         classId: classId,
         sessionId: selectedSession,
         isFeePaid: false,
-        balance: '',
-        gender: '',
-        dob: '',
-        tribe: '',
-        stateOfOrigin: '',
-        lgaOfOrigin: '',
-        classAtAdmission: '',
-        dateOfAdmission: '',
-        admissionNumber: '',
-        yearOfAdmission: '',
-        parentName: '',
-        parentAddress: '',
-        parentPhone: '',
-        parentReligion: ''
+        balance: "",
+        gender: "",
+        dob: "",
+        tribe: "",
+        stateOfOrigin: "",
+        lgaOfOrigin: "",
+        classAtAdmission: "",
+        dateOfAdmission: "",
+        admissionNumber: "",
+        yearOfAdmission: "",
+        parentName: "",
+        parentAddress: "",
+        parentPhone: "",
+        parentReligion: "",
       }));
     }
   }, [initialData, classId, selectedSession]);
@@ -77,10 +103,18 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
   useEffect(() => {
     // Update the LGAs dropdown when the state of origin changes
     if (formData.stateOfOrigin) {
-      const selectedState = StudentFormInfoData.states.find(s => s.name === formData.stateOfOrigin);
-      setLgAs(selectedState ? selectedState.lgAs : []);
-      // Reset LGA field if the state changes to prevent invalid selection
-      setFormData(prev => ({ ...prev, lgaOfOrigin: '' }));
+      const selectedState = StudentFormInfoData.states.find(
+        (s) => s.name === formData.stateOfOrigin
+      );
+
+      if (formData.lgaOfOrigin) {
+        //edit
+        setLgAs([formData.lgaOfOrigin]);
+      } else {
+        setLgAs(selectedState ? selectedState.lgAs : []);
+        // Reset LGA field if the state changes to prevent invalid selection
+        setFormData((prev) => ({ ...prev, lgaOfOrigin: "" }));
+      }
     } else {
       setLgAs([]);
     }
@@ -90,8 +124,8 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-      ...(name === 'isFeePaid' && checked ? { balance: 0 } : {})
+      [name]: type === "checkbox" ? checked : value,
+      ...(name === "isFeePaid" && checked ? { balance: 0 } : {}),
     }));
   };
 
@@ -100,19 +134,48 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
     onSubmit({ ...formData, selectedTermId });
   };
 
+  const formatDateForInput = (isoDateString) => {
+  if (!isoDateString) return '';
+  
+  let dateToParse = isoDateString;
+
+  // 1. **Crucial Fix:** Check if the string has a time zone indicator. 
+  // If it's a date-only time at midnight, append 'Z' to force UTC interpretation.
+  if (typeof isoDateString === 'string' && !isoDateString.endsWith('Z')) {
+    // This assumes your T00:00:00 time *should* represent the start of the date in UTC.
+    dateToParse = isoDateString.replace('T00:00:00', '') + 'T00:00:00.000Z'; 
+  }
+  
+  // 2. Create the Date object from the guaranteed-UTC string
+  const dateObj = new Date(dateToParse);
+  
+  // 3. Use UTC methods to extract date components
+  const year = dateObj.getUTCFullYear();
+  const month = dateObj.getUTCMonth() + 1; // 0-indexed, so add 1
+  const day = dateObj.getUTCDate();
+  
+  // 4. Format as YYYY-MM-DD
+  const formattedMonth = String(month).padStart(2, '0');
+  const formattedDay = String(day).padStart(2, '0');
+
+  return `${year}-${formattedMonth}-${formattedDay}`;
+};
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6 p-4">
-      
       {/* Selected Term Field (from original code) */}
       <div>
-        <label htmlFor="selectedTerm" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="selectedTerm"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Selected Term
         </label>
         <input
           type="text"
           id="selectedTerm"
           name="selectedTerm"
-          value={selectedTermName || ''}
+          value={selectedTermName || ""}
           readOnly
           className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 sm:text-sm"
         />
@@ -120,7 +183,10 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
 
       {/* Student Name Field (from original code) */}
       <div>
-        <label htmlFor="studentName" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="studentName"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Student Name
         </label>
         <input
@@ -135,11 +201,13 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
         />
       </div>
 
-
       {/* Admission Number & Year of Admission */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label htmlFor="admissionNumber" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="admissionNumber"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Admission Number
           </label>
           <input
@@ -154,7 +222,10 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
           />
         </div>
         <div>
-          <label htmlFor="yearOfAdmission" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="yearOfAdmission"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Year of Admission
           </label>
           <input
@@ -176,7 +247,10 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label htmlFor="classAtAdmission" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="classAtAdmission"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Class At Admission
           </label>
           <input
@@ -191,19 +265,25 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
           />
         </div>
         <div>
-          <label htmlFor="dateOfAdmission" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="dateOfAdmission"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Date Of Admission
           </label>
           <input
             type="date"
             id="dateOfAdmission"
             name="dateOfAdmission"
-            value={formData.dateOfAdmission}
+            // Apply the formatting function to your date value
+            value={initialData.dateOfAdmission ? formatDateForInput(formData.dateOfAdmission) : formData.dateOfAdmission}
             onChange={handleChange}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
             placeholder="e.g 8/1/2025"
             min="1900"
-            max={new Date().getFullYear()}
+            // You should be using date strings for min/max, not just the year
+            // max={new Date().getFullYear()} // <-- You might want to update this to a full date string too
+            max={formatDateForInput(new Date())} // <-- Set max to today's date in YYYY-MM-DD format
             required
           />
         </div>
@@ -212,21 +292,29 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
       {/* Date of Birth & Gender */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label htmlFor="dob" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="dob"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Date of Birth
           </label>
           <input
             type="date"
             id="dob"
             name="dob"
-            value={formData.dob}
+            value={initialData.dob ? formatDateForInput(formData.dob) : formData.dob}
             onChange={handleChange}
             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-orange focus:border-primary-orange sm:text-sm"
+            min="1900"
+            max={formatDateForInput(new Date())}
             required
           />
         </div>
         <div>
-          <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="gender"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Gender
           </label>
           <select
@@ -238,8 +326,10 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
             required
           >
             <option value="">Select Gender</option>
-            {StudentFormInfoData.genders.map(gender => (
-              <option key={gender} value={gender}>{gender}</option>
+            {StudentFormInfoData.genders.map((gender) => (
+              <option key={gender} value={gender}>
+                {gender}
+              </option>
             ))}
           </select>
         </div>
@@ -248,7 +338,10 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
       {/* State of Origin & LGA */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label htmlFor="stateOfOrigin" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="stateOfOrigin"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             State of Origin
           </label>
           <select
@@ -260,13 +353,18 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
             required
           >
             <option value="">Select State</option>
-            {StudentFormInfoData.states.map(state => (
-              <option key={state.name} value={state.name}>{state.name}</option>
+            {StudentFormInfoData.states.map((state) => (
+              <option key={state.name} value={state.name}>
+                {state.name}
+              </option>
             ))}
           </select>
         </div>
         <div>
-          <label htmlFor="lgaOfOrigin" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="lgaOfOrigin"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             L.G.A. of Origin
           </label>
           <select
@@ -279,8 +377,10 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
             disabled={!formData.stateOfOrigin}
           >
             <option value="">Select L.G.A.</option>
-            {lgAs.map(lga => (
-              <option key={lga} value={lga}>{lga}</option>
+            {lgAs.map((lga) => (
+              <option key={lga} value={lga}>
+                {lga}
+              </option>
             ))}
           </select>
         </div>
@@ -289,7 +389,10 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
       {/* Tribe & Religion */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label htmlFor="tribe" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="tribe"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Tribe
           </label>
           <select
@@ -301,13 +404,18 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
             required
           >
             <option value="">Select Tribe</option>
-            {StudentFormInfoData.tribes.map(tribe => (
-              <option key={tribe} value={tribe}>{tribe}</option>
+            {StudentFormInfoData.tribes.map((tribe) => (
+              <option key={tribe} value={tribe}>
+                {tribe}
+              </option>
             ))}
           </select>
         </div>
         <div>
-          <label htmlFor="parentReligion" className="block text-sm font-medium text-gray-700 mb-1">
+          <label
+            htmlFor="parentReligion"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
             Parent's Religion
           </label>
           <select
@@ -319,16 +427,21 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
             required
           >
             <option value="">Select Religion</option>
-            {StudentFormInfoData.religions.map(religion => (
-              <option key={religion} value={religion}>{religion}</option>
+            {StudentFormInfoData.religions.map((religion) => (
+              <option key={religion} value={religion}>
+                {religion}
+              </option>
             ))}
           </select>
         </div>
       </div>
-      
+
       {/* Parent's/Guardian's Name */}
       <div>
-        <label htmlFor="parentName" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="parentName"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Parent's/Guardian's Name
         </label>
         <input
@@ -345,7 +458,10 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
 
       {/* Phone Numbers */}
       <div>
-        <label htmlFor="parentPhone" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="parentPhone"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Parent's Phone Number
         </label>
         <input
@@ -362,7 +478,10 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
 
       {/* Address */}
       <div>
-        <label htmlFor="parentAddress" className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="parentAddress"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Student's/Parent's Address
         </label>
         <textarea
@@ -387,15 +506,21 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
           onChange={handleChange}
           className="h-4 w-4 text-primary-orange focus:ring-primary-orange border-gray-300 rounded"
         />
-        <label htmlFor="isFeePaid" className="text-sm font-medium text-gray-700">
-          {`Is fee completely paid for ${selectedTermName || ''} Term?`}
+        <label
+          htmlFor="isFeePaid"
+          className="text-sm font-medium text-gray-700"
+        >
+          {`Is fee completely paid for ${selectedTermName || ""} Term?`}
         </label>
       </div>
 
       {/* Balance Field (from original code) */}
       <div>
-        <label htmlFor="balance" className="block text-sm font-medium text-gray-700 mb-1">
-          {formData.isFeePaid ? 'Balance (₦)' : 'Amount Owed (₦)'}
+        <label
+          htmlFor="balance"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          {formData.isFeePaid ? "Balance (₦)" : "Amount Owed (₦)"}
         </label>
         <input
           type="number"
@@ -410,13 +535,13 @@ const StudentForm = ({ onSubmit, classId, selectedSession, initialData, selected
           disabled={formData.isFeePaid}
         />
       </div>
-      
+
       <div className="flex justify-end pt-4">
         <button
           type="submit"
           className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-orange hover:bg-opacity-80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-orange transition-colors cursor-pointer"
         >
-          {initialData ? 'Update Changes' : 'Save Changes'}
+          {initialData ? "Update Changes" : "Save Changes"}
         </button>
       </div>
     </form>

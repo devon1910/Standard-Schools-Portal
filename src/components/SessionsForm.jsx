@@ -21,7 +21,6 @@ const SessionForm = ({ onSubmit, initialData }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Form Data before:', formData);
     onSubmit(formData);
   };
 

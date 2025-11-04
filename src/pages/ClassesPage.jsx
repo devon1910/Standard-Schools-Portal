@@ -81,7 +81,6 @@ const ClassesPage = () => {
       formData.sessionId = sessionId;
       setIsLoading(true);
       await submitClassData(formData).then((response) => {
-        console.log("response: ", response);
         toast.success(
           editingClass
             ? "Class updated successfully"
