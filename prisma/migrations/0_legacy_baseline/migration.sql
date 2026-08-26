@@ -1,0 +1,2 @@
+-- Baseline marker for the schema already managed by Entity Framework.
+-- This migration is deliberately empty and must be marked applied on the existing database.

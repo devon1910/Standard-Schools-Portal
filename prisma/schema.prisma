@@ -1,0 +1,309 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  STAFF
+}
+
+enum StudentStatus {
+  ACTIVE
+  WITHDRAWN
+  GRADUATED
+  ARCHIVED
+}
+
+enum ReportStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model School {
+  id            Int       @id
+  name          String
+  shortName     String
+  motto         String?
+  address       String?
+  phone         String?
+  logoUrl       String?
+  logoPublicId  String?
+  principalName String?
+  users         PortalUser[]
+  students      StudentProfile[]
+  enrollments   Enrollment[]
+  termSetups    TermSetup[]
+  reports       TermReport[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model PortalUser {
+  id                  String    @id @default(cuid())
+  username            String    @unique
+  displayName         String
+  passwordHash        String
+  role                UserRole
+  schoolId            Int
+  school              School    @relation(fields: [schoolId], references: [id])
+  isActive            Boolean   @default(true)
+  mustChangePassword  Boolean   @default(true)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([schoolId])
+}
+
+model LegacySession {
+  id           Int       @id @default(autoincrement()) @map("Id")
+  name         String    @map("Name")
+  schoolId     Int       @map("SchoolId")
+  dateCreated  DateTime  @map("DateCreated")
+  dateModified DateTime? @map("DateModified")
+  modifiedBy   String?   @map("ModifiedBy")
+
+  @@map("Sessions")
+}
+
+model LegacyTerm {
+  id       Int    @id @default(autoincrement()) @map("Id")
+  name     String @map("Name")
+  schoolId Int    @map("SchoolId")
+
+  @@map("Terms")
+}
+
+model LegacyClassType {
+  id           Int       @id @default(autoincrement()) @map("Id")
+  name         String    @map("Name")
+  schoolId     Int       @map("SchoolId")
+  dateCreated  DateTime  @map("DateCreated")
+  dateModified DateTime? @map("DateModified")
+  modifiedBy   String?   @map("ModifiedBy")
+
+  @@map("ClassTypes")
+}
+
+model LegacyClass {
+  id           Int       @id @default(autoincrement()) @map("Id")
+  name         String    @map("Name")
+  classTeacher String?   @map("ClassTeacher")
+  classTypeId  Int       @map("ClassTypeId")
+  sessionId    Int       @map("SessionId")
+  schoolId     Int       @map("SchoolId")
+  dateCreated  DateTime  @map("DateCreated")
+  dateModified DateTime? @map("DateModified")
+  modifiedBy   String?   @map("ModifiedBy")
+  archivedAt   DateTime?
+  enrollments  Enrollment[]
+  classSubjects ClassSubject[]
+
+  @@index([schoolId, sessionId])
+  @@map("Classes")
+}
+
+model LegacySubject {
+  id           Int       @id @default(autoincrement()) @map("Id")
+  name         String    @map("Name")
+  classTypeId  Int       @map("ClassTypeId")
+  schoolId     Int       @map("SchoolId")
+  dateCreated  DateTime  @map("DateCreated")
+  dateModified DateTime? @map("DateModified")
+  modifiedBy   String?   @map("ModifiedBy")
+  archivedAt   DateTime?
+  classSubjects ClassSubject[]
+  scores       ResultScore[]
+
+  @@index([schoolId, classTypeId])
+  @@map("Subjects")
+}
+
+model LegacyQuestion {
+  id           Int       @id @default(autoincrement()) @map("Id")
+  questionUrl  String    @map("QuestionURL")
+  type         String    @map("Type")
+  subjectId    Int       @map("SubjectId")
+  termId       Int       @map("TermId")
+  sessionId    Int       @map("SessionId")
+  classId      Int       @map("ClassId")
+  filePublicId String    @map("FilePublicId")
+  schoolId     Int       @map("SchoolId")
+  dateCreated  DateTime  @map("DateCreated")
+  dateModified DateTime? @map("DateModified")
+  modifiedBy   String?   @map("ModifiedBy")
+  archivedAt   DateTime?
+
+  @@index([schoolId, sessionId, termId, classId])
+  @@map("Questions")
+}
+
+model LegacyStudent {
+  id                   BigInt    @id @default(autoincrement()) @map("Id")
+  name                 String    @map("Name")
+  admissionNumber      String    @map("AdmissionNumber")
+  gender               String    @map("Gender")
+  dob                   DateTime  @map("Dob")
+  tribe                 String    @map("Tribe")
+  stateOfOrigin         String    @map("StateOfOrigin")
+  lgaOfOrigin           String    @map("LGAOfOrigin")
+  classAtAdmission      String    @map("ClassAtAdmission")
+  dateOfAdmission       DateTime  @map("DateOfAdmission")
+  yearOfAdmission       String    @map("YearOfAdmission")
+  parentName            String    @map("ParentName")
+  parentAddress         String    @map("ParentAddress")
+  parentPhone           String    @map("ParentPhone")
+  parentReligion        String    @map("ParentReligion")
+  classId               Int       @map("ClassId")
+  sessionId             Int       @map("SessionId")
+  schoolId              Int       @map("SchoolId")
+  isFirstTermFeePaid    Boolean   @map("IsFirstTermFeePaid")
+  firstTermBalance      Decimal   @map("FirstTermBalance") @db.Decimal(18, 2)
+  isSecondTermFeePaid   Boolean   @map("IsSecondTermFeePaid")
+  secondTermBalance     Decimal   @map("SecondTermBalance") @db.Decimal(18, 2)
+  isThirdTermFeePaid    Boolean   @map("IsThirdTermFeePaid")
+  thirdTermBalance      Decimal   @map("ThirdTermBalance") @db.Decimal(18, 2)
+  balance               Decimal   @map("Balance")
+  dateCreated           DateTime  @map("DateCreated")
+  dateModified          DateTime? @map("DateModified")
+  modifiedBy            String?   @map("ModifiedBy")
+
+  @@map("Students")
+}
+
+model StudentProfile {
+  id               BigInt        @id @default(autoincrement())
+  schoolId         Int
+  school           School        @relation(fields: [schoolId], references: [id])
+  name             String
+  admissionNumber  String?
+  gender           String?
+  dob              DateTime?
+  tribe            String?
+  stateOfOrigin    String?
+  lgaOfOrigin      String?
+  classAtAdmission String?
+  dateOfAdmission  DateTime?
+  yearOfAdmission  String?
+  parentName       String?
+  parentAddress    String?
+  parentPhone      String?
+  parentReligion   String?
+  photoUrl         String?
+  photoPublicId    String?
+  status           StudentStatus @default(ACTIVE)
+  enrollments      Enrollment[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  archivedAt       DateTime?
+
+  @@unique([schoolId, admissionNumber])
+  @@index([schoolId, name])
+}
+
+model Enrollment {
+  id                      BigInt         @id @default(autoincrement())
+  schoolId                Int
+  school                  School        @relation(fields: [schoolId], references: [id])
+  studentId               BigInt
+  student                 StudentProfile @relation(fields: [studentId], references: [id])
+  sessionId               Int
+  classId                 Int
+  class                   LegacyClass   @relation(fields: [classId], references: [id])
+  legacyStudentId         BigInt?        @unique
+  firstTermFeePaid        Boolean        @default(false)
+  firstTermBalance        Decimal        @default(0) @db.Decimal(18, 2)
+  secondTermFeePaid       Boolean        @default(false)
+  secondTermBalance       Decimal        @default(0) @db.Decimal(18, 2)
+  thirdTermFeePaid        Boolean        @default(false)
+  thirdTermBalance        Decimal        @default(0) @db.Decimal(18, 2)
+  active                  Boolean        @default(true)
+  scores                  ResultScore[]
+  reports                 TermReport[]
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  @@unique([studentId, sessionId])
+  @@index([schoolId, sessionId, classId])
+}
+
+model ClassSubject {
+  id        Int           @id @default(autoincrement())
+  schoolId  Int
+  classId   Int
+  class     LegacyClass   @relation(fields: [classId], references: [id])
+  subjectId Int
+  subject   LegacySubject @relation(fields: [subjectId], references: [id])
+  createdAt DateTime      @default(now())
+
+  @@unique([classId, subjectId])
+  @@index([schoolId, classId])
+}
+
+model ResultScore {
+  id         BigInt        @id @default(autoincrement())
+  schoolId   Int
+  enrollmentId BigInt
+  enrollment Enrollment    @relation(fields: [enrollmentId], references: [id])
+  termId     Int
+  subjectId  Int
+  subject    LegacySubject @relation(fields: [subjectId], references: [id])
+  firstTest  Int?
+  secondTest Int?
+  exam       Int?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@unique([enrollmentId, termId, subjectId])
+  @@index([schoolId, termId, subjectId])
+}
+
+model TermSetup {
+  id             Int       @id @default(autoincrement())
+  schoolId       Int
+  school         School    @relation(fields: [schoolId], references: [id])
+  sessionId      Int
+  termId         Int
+  schoolOpened   Int
+  resumptionDate DateTime?
+  reportTitle    String    @default("CONTINUOUS ASSESSMENT")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([schoolId, sessionId, termId])
+}
+
+model TermReport {
+  id                    BigInt       @id @default(autoincrement())
+  schoolId              Int
+  school                School       @relation(fields: [schoolId], references: [id])
+  enrollmentId          BigInt
+  enrollment            Enrollment   @relation(fields: [enrollmentId], references: [id])
+  termId                 Int
+  timesPresent           Int?
+  concentration          Int?
+  schoolAttendance       Int?
+  assignments            Int?
+  punctuality            Int?
+  classParticipation     Int?
+  attitudeToProperty     Int?
+  cleanliness            Int?
+  generalConduct         Int?
+  teacherRemark          String?
+  principalRemark        String?
+  status                 ReportStatus @default(DRAFT)
+  publishedAt            DateTime?
+  publishedBy            String?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  @@unique([enrollmentId, termId])
+  @@index([schoolId, termId, status])
+}

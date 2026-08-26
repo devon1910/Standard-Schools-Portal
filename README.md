@@ -1,12 +1,66 @@
-# React + Vite
+# Standard Schools Portal
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack Next.js administration portal for Standard High School and Standard International School. The application replaces the former Vite frontend and .NET API with one deployable service while continuing to use the populated PostgreSQL database and Cloudinary assets.
 
-Currently, two official plugins are available:
+## What is included
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- School-isolated owner and staff accounts with temporary-password rotation and login lockout.
+- Permanent student profiles with session-based enrollments and term fee tracking.
+- Guided session setup and bulk promotion, including left-school and graduated outcomes.
+- Sessions, classes, class categories, subjects, and a signed-upload question bank.
+- Class-wide subject configuration and spreadsheet-style 20/20/60 score sheets.
+- Attendance, behaviour ratings, teacher/principal remarks, result validation and publishing.
+- Individual or class-batch A4 report cards based on the supplied reference document.
 
-## Expanding the ESLint configuration
+## Local setup
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Use Node.js 24 or a supported current LTS release.
+2. Copy `.env.example` to `.env.local` and supply a development PostgreSQL database, NextAuth secret, and Cloudinary credentials.
+3. Install and generate the client:
+
+   ```powershell
+   npm install
+   npm run db:generate
+   ```
+
+4. For an existing database, follow [prisma/migrations/README.md](prisma/migrations/README.md). Never run a reset against production.
+5. Seed the two schools and temporary accounts after setting the four `SEED_*_PASSWORD` variables:
+
+   ```powershell
+   npm run db:seed
+   ```
+
+6. Start the portal:
+
+   ```powershell
+   npm run dev
+   ```
+
+## Production migration and cutover
+
+1. Take a `pg_dump` backup and restore it to staging.
+2. Mark `0_legacy_baseline` as applied, deploy the additive rewrite migration, and run `npx tsx prisma/backfill.ts`.
+3. Resolve every duplicate-admission conflict reported by the backfill. Verify legacy row, enrollment, profile, question and class counts.
+4. Run owner/staff acceptance testing on staging.
+5. During a short maintenance window, back up production again, deploy the migration, run the backfill and seed reset accounts.
+6. Deploy to Vercel with a pooled `DATABASE_URL`. Keep the .NET deployment disabled but recoverable for 30 days.
+
+The migration never drops the legacy `Students` or ASP.NET Identity tables. Rollback therefore remains possible, although records created after cutover must be reconciled before reverting.
+
+## Quality checks
+
+```powershell
+npm run lint
+npm run typecheck
+npm test
+npm run build
+```
+
+Playwright smoke tests use `PLAYWRIGHT_BASE_URL` or default to `http://127.0.0.1:3000`.
+
+## Permission summary
+
+- **Owner:** school settings, users, academic structure, promotion, fees, archival, score entry, report details and publishing.
+- **Staff:** students, question files, score entry, draft report details, previews and printing.
+
+Every query and Server Action independently checks the authenticated school. There is no public report lookup or compatibility REST API in this version.

@@ -10,6 +10,12 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+.next
+coverage
+playwright-report
+test-results
+next-env.d.ts
+*.tsbuildinfo
 *.local
 
 # Editor directories and files
@@ -23,3 +29,5 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.env.*
+!.env.example
