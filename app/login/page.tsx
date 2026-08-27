@@ -9,8 +9,8 @@ export default async function LoginPage() {
       <section className="auth-hero">
         <div><strong>STANDARD SCHOOLS</strong></div>
         <div>
-          <h1>A calmer way to run the school day.</h1>
-          <p>Students, fees, academic sessions, questions and report cards, kept together and ready when your team needs them.</p>
+          <h1>Manage your school records in one place.</h1>
+          <p>Keep track of students, fees, academic sessions, questions and report cards.</p>
         </div>
         <small>Secure administration portal</small>
       </section>
