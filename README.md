@@ -2,6 +2,8 @@
 
 A full-stack Next.js administration portal for Standard High School and Standard International School. The application replaces the former Vite frontend and .NET API with one deployable service while continuing to use the populated PostgreSQL database and Cloudinary assets.
 
+For simple instructions on using the portal, see the [Portal User Guide](USER_GUIDE.md).
+
 ## What is included
 
 - School-isolated owner and staff accounts with temporary-password rotation and login lockout.
