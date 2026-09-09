@@ -1,8 +1,10 @@
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { ArrowLeft, Archive, Phone, UserRound } from "lucide-react";
 import { notFound } from "next/navigation";
 import { archiveStudent } from "@/app/actions/admin";
 import ConfirmSubmitButton from "@/components/confirm-submit-button";
+import StudentPhotoUpload from "@/components/student-photo-upload";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDate, money } from "@/lib/format";
@@ -41,7 +43,9 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
       <Link className="back-link" href="/students"><ArrowLeft size={16} />Back to students</Link>
       <header className="student-hero card">
         <div className="student-identity">
-          <span className="avatar avatar-large">{initials}</span>
+          {student.photoUrl
+            ? <img className="avatar avatar-large student-profile-photo" src={student.photoUrl} alt={`${student.name}'s passport photograph`} />
+            : <span className="avatar avatar-large">{initials}</span>}
           <div>
             <div className="student-title-line">
               <h2>{student.name}</h2>
@@ -52,14 +56,17 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
             <p>Admission number: <strong>{display(student.admissionNumber)}</strong></p>
           </div>
         </div>
-        {user.role === "OWNER" && student.status !== "ARCHIVED" && (
-          <form action={archiveStudent}>
-            <input type="hidden" name="studentId" value={student.id.toString()} />
-            <ConfirmSubmitButton message={`Archive ${student.name}? Their history will be kept and the record can be restored by an administrator.`} pendingLabel="Archiving...">
-              <Archive size={16} />Archive student
-            </ConfirmSubmitButton>
-          </form>
-        )}
+        <div className="student-hero-actions">
+          {student.status !== "ARCHIVED" && <StudentPhotoUpload studentId={student.id.toString()} studentName={student.name} />}
+          {user.role === "OWNER" && student.status !== "ARCHIVED" && (
+            <form action={archiveStudent}>
+              <input type="hidden" name="studentId" value={student.id.toString()} />
+              <ConfirmSubmitButton message={`Archive ${student.name}? Their history will be kept and the record can be restored by an administrator.`} pendingLabel="Archiving...">
+                <Archive size={16} />Archive student
+              </ConfirmSubmitButton>
+            </form>
+          )}
+        </div>
       </header>
 
       <section className="grid two-column student-details-grid">

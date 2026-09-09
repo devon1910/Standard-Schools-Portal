@@ -5,10 +5,12 @@ export function scoreTotal(firstTest: number, secondTest: number, exam: number) 
 }
 
 export function gradeFor(total: number) {
-  if (total >= 70) return "A";
-  if (total >= 60) return "B";
-  if (total >= 50) return "C";
-  if (total >= 40) return "D";
+  if (total >= 90) return "A+";
+  if (total >= 80) return "A";
+  if (total >= 70) return "B";
+  if (total >= 60) return "C";
+  if (total >= 50) return "D";
+  if (total >= 40) return "E";
   return "F";
 }
 

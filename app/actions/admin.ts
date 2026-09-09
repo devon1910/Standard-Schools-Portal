@@ -7,6 +7,7 @@ import { hash } from "@node-rs/argon2";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireOwner, requireUser } from "@/lib/auth";
+import { cloudinary } from "@/lib/cloudinary";
 
 const positiveInt = z.coerce.number().int().positive();
 const optionalDate = z.preprocess((value) => (value ? new Date(String(value)) : null), z.date().nullable());
@@ -98,6 +99,41 @@ export async function createStudent(formData: FormData) {
     },
   });
   revalidatePath("/students");
+}
+
+const studentPhotoSchema = z.object({
+  studentId: z.string().regex(/^\d+$/),
+  photoUrl: z.string().url().refine((value) => {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname === "res.cloudinary.com";
+  }, "Invalid photo URL."),
+  photoPublicId: z.string().trim().min(1).max(500),
+});
+
+export async function updateStudentPhoto(input: z.infer<typeof studentPhotoSchema>) {
+  const user = await requireUser();
+  const data = studentPhotoSchema.parse(input);
+  const expectedPrefix = `standard-schools/${user.schoolId}/student-photos/`;
+  if (!data.photoPublicId.startsWith(expectedPrefix)) throw new Error("Invalid photo upload.");
+
+  const studentId = BigInt(data.studentId);
+  const student = await db.studentProfile.findFirst({
+    where: { id: studentId, schoolId: user.schoolId },
+    select: { id: true, photoPublicId: true },
+  });
+  if (!student) throw new Error("Student not found.");
+
+  await db.studentProfile.update({
+    where: { id: student.id },
+    data: { photoUrl: data.photoUrl, photoPublicId: data.photoPublicId },
+  });
+  revalidatePath(`/students/${data.studentId}`);
+  revalidatePath("/reports");
+
+  if (student.photoPublicId && student.photoPublicId !== data.photoPublicId) {
+    await cloudinary.uploader.destroy(student.photoPublicId).catch(() => undefined);
+  }
+  return { success: true };
 }
 
 export async function updateFees(formData: FormData) {

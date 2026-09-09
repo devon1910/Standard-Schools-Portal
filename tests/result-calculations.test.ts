@@ -8,8 +8,8 @@ describe("result calculations", () => {
   });
 
   it.each([
-    [100, "A"], [70, "A"], [69, "B"], [60, "B"], [59, "C"], [50, "C"],
-    [49, "D"], [40, "D"], [39, "F"], [0, "F"],
+    [100, "A+"], [90, "A+"], [89, "A"], [80, "A"], [79, "B"], [70, "B"],
+    [69, "C"], [60, "C"], [59, "D"], [50, "D"], [49, "E"], [40, "E"], [39, "F"], [0, "F"],
   ])("grades %i as %s", (score, grade) => expect(gradeFor(score)).toBe(grade));
 
   it.each([
