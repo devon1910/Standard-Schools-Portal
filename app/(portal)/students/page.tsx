@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Upload } from "lucide-react";
 import { updateFees } from "@/app/actions/admin";
 import StudentCreateForm from "@/components/student-create-form";
 import SubmitButton from "@/components/submit-button";
@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { money } from "@/lib/format";
 import { getCurrentSessionId } from "@/lib/current-session";
 import { EmptyTableRow } from "@/components/empty-state";
+import StudentImportForm from "@/components/student-import-form";
 
 const PAGE_SIZE = 20;
 
@@ -78,12 +79,18 @@ export default async function StudentsPage({ searchParams }: { searchParams: Stu
           <h2>Students</h2>
           <p>One permanent profile per student, with a clear enrollment history for each academic session.</p>
         </div>
-        <details className="panel">
-          <summary><Plus size={15} style={{ display: "inline", marginRight: 7 }} />Add student</summary>
-          <div className="panel-body" style={{ width: "min(680px, 80vw)" }}>
-            <StudentCreateForm sessions={sessions} classes={allClasses} defaultSessionId={sessionId} />
-          </div>
-        </details>
+        <div className="header-actions">
+          <details className="panel">
+            <summary><Upload size={15} style={{ display: "inline", marginRight: 7 }} />Import students</summary>
+            <div className="panel-body"><StudentImportForm sessions={sessions} classes={allClasses} defaultSessionId={sessionId} /></div>
+          </details>
+          <details className="panel">
+            <summary><Plus size={15} style={{ display: "inline", marginRight: 7 }} />Add student</summary>
+            <div className="panel-body" style={{ width: "min(680px, 80vw)" }}>
+              <StudentCreateForm sessions={sessions} classes={allClasses} defaultSessionId={sessionId} />
+            </div>
+          </details>
+        </div>
       </header>
 
       {params.error && <div className="notice error">{errorMap[params.error] ?? "The student could not be saved."}</div>}

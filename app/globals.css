@@ -186,6 +186,11 @@ details.panel[open] > summary { border-bottom: 1px solid var(--line); }
 .auth-card h2 { margin: 0; font-size: 2.1rem; }
 .auth-card > p { margin: 8px 0 28px; color: var(--muted); }
 .auth-card form { display: grid; gap: 16px; }
+.school-onboarding { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px; margin-top: 30px; padding-top: 24px; border-top: 2px solid var(--line); }
+.school-onboarding > svg { color: var(--brand); margin-top: 2px; }
+.school-onboarding strong { display: block; font-size: .92rem; }
+.school-onboarding p { margin: 5px 0 14px; color: var(--muted); font-size: .82rem; line-height: 1.5; }
+.school-onboarding .button { width: fit-content; }
 
 .score-input { width: 68px; text-align: center; padding: 8px 4px; border: 1px solid #d0d5dd; border-radius: 7px; }
 .score-total { font-weight: 800; text-align: center; }

@@ -8,6 +8,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireOwner, requireUser } from "@/lib/auth";
 import { cloudinary } from "@/lib/cloudinary";
+import { MAX_STUDENT_IMPORT_ROWS, parseImportDate, studentImportRowSchema, type StudentImportRow } from "@/lib/student-import";
 
 const positiveInt = z.coerce.number().int().positive();
 const optionalDate = z.preprocess((value) => (value ? new Date(String(value)) : null), z.date().nullable());
@@ -99,6 +100,94 @@ export async function createStudent(formData: FormData) {
     },
   });
   revalidatePath("/students");
+}
+
+export type StudentImportResult = {
+  success: boolean;
+  imported: number;
+  errors: { rowNumber: number; message: string }[];
+};
+
+export async function importStudents(input: {
+  sessionId: number;
+  classId: number;
+  rows: StudentImportRow[];
+}): Promise<StudentImportResult> {
+  const user = await requireUser();
+  const selection = z.object({
+    sessionId: positiveInt,
+    classId: positiveInt,
+    rows: z.array(studentImportRowSchema).min(1).max(MAX_STUDENT_IMPORT_ROWS),
+  }).safeParse(input);
+
+  if (!selection.success) {
+    return { success: false, imported: 0, errors: [{ rowNumber: 0, message: "The import data is invalid or exceeds 1,000 rows." }] };
+  }
+
+  const { sessionId, classId, rows } = selection.data;
+  const targetClass = await db.legacyClass.findFirst({
+    where: { id: classId, sessionId, schoolId: user.schoolId, archivedAt: null },
+    select: { name: true },
+  });
+  if (!targetClass) {
+    return { success: false, imported: 0, errors: [{ rowNumber: 0, message: "Choose a valid class in the selected session." }] };
+  }
+
+  const errors: StudentImportResult["errors"] = [];
+  const seen = new Map<string, number>();
+  const normalized = rows.flatMap((row) => {
+    const admissionNumber = row.admissionNumber.toUpperCase();
+    const firstSeen = seen.get(admissionNumber);
+    if (firstSeen) {
+      errors.push({ rowNumber: row.rowNumber, message: `Admission number is repeated (first used on row ${firstSeen}).` });
+      return [];
+    }
+    seen.set(admissionNumber, row.rowNumber);
+    const dob = parseImportDate(row.dob);
+    const dateOfAdmission = parseImportDate(row.dateOfAdmission);
+    if (dob === undefined || dateOfAdmission === undefined) {
+      errors.push({ rowNumber: row.rowNumber, message: "Dates must use YYYY-MM-DD format." });
+      return [];
+    }
+    return [{ ...row, admissionNumber, dob, dateOfAdmission }];
+  });
+
+  const existing = normalized.length ? await db.studentProfile.findMany({
+    where: { schoolId: user.schoolId, admissionNumber: { in: normalized.map((row) => row.admissionNumber) } },
+    select: { admissionNumber: true },
+  }) : [];
+  const existingNumbers = new Set(existing.map((item) => item.admissionNumber));
+  const validRows = normalized.filter((row) => {
+    if (!existingNumbers.has(row.admissionNumber)) return true;
+    errors.push({ rowNumber: row.rowNumber, message: "Admission number already belongs to another student." });
+    return false;
+  });
+
+  if (errors.length) return { success: false, imported: 0, errors: errors.sort((a, b) => a.rowNumber - b.rowNumber) };
+
+  await db.$transaction(async (tx) => {
+    for (const row of validRows) {
+      await tx.studentProfile.create({
+        data: {
+          schoolId: user.schoolId,
+          name: row.name,
+          admissionNumber: row.admissionNumber,
+          gender: row.gender || null,
+          dob: row.dob,
+          dateOfAdmission: row.dateOfAdmission,
+          yearOfAdmission: row.dateOfAdmission?.getFullYear().toString() ?? null,
+          classAtAdmission: row.classAtAdmission || targetClass.name,
+          parentName: row.parentName || null,
+          parentPhone: row.parentPhone || null,
+          parentAddress: row.parentAddress || null,
+          enrollments: { create: { schoolId: user.schoolId, sessionId, classId } },
+        },
+      });
+    }
+  });
+
+  revalidatePath("/students");
+  return { success: true, imported: validRows.length, errors: [] };
 }
 
 const studentPhotoSchema = z.object({
