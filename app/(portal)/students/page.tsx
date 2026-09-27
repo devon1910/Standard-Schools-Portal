@@ -9,6 +9,7 @@ import { money } from "@/lib/format";
 import { getCurrentSessionId } from "@/lib/current-session";
 import { EmptyTableRow } from "@/components/empty-state";
 import StudentImportForm from "@/components/student-import-form";
+import StudentSearchInput from "@/components/student-search-input";
 
 const PAGE_SIZE = 20;
 
@@ -100,7 +101,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Stu
           <label>Find a student</label>
           <div style={{ position: "relative" }}>
             <Search size={16} style={{ position: "absolute", left: 11, top: 12, color: "var(--muted)" }} />
-            <input className="input" style={{ paddingLeft: 35 }} name="q" defaultValue={query} placeholder="Name or admission number" />
+            <StudentSearchInput query={query} />
           </div>
         </div>
         <div className="field">

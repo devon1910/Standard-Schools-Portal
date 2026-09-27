@@ -2,8 +2,10 @@
 import Link from "next/link";
 import { ArrowLeft, Archive, Phone, UserRound } from "lucide-react";
 import { notFound } from "next/navigation";
-import { archiveStudent } from "@/app/actions/admin";
+import { archiveStudent, updateStudent } from "@/app/actions/admin";
 import ConfirmSubmitButton from "@/components/confirm-submit-button";
+import SubmitButton from "@/components/submit-button";
+import StudentDeleteConfirmation from "@/components/student-delete-confirmation";
 import StudentPhotoUpload from "@/components/student-photo-upload";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -13,9 +15,10 @@ function display(value: string | null | undefined) {
   return value?.trim() || "Not provided";
 }
 
-export default async function StudentPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function StudentPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; updated?: string }> }) {
   const user = await requireUser();
   const { id } = await params;
+  const query = await searchParams;
   if (!/^\d+$/.test(id)) notFound();
 
   const [student, sessions] = await Promise.all([
@@ -69,6 +72,29 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
         </div>
       </header>
 
+      {query.error === "admission-exists" && <div className="notice error">That admission number is already assigned to another student.</div>}
+      {query.updated === "1" && <div className="notice info">Student details updated.</div>}
+
+      {user.role === "OWNER" && <details className="card card-pad" style={{ marginBottom: 20 }}>
+        <summary>Edit student details</summary>
+        <form action={updateStudent} className="grid" style={{ marginTop: 20 }}>
+          <input type="hidden" name="studentId" value={id} />
+          <div className="profile-grid">
+            {([
+              ["name", "Full name", student.name], ["admissionNumber", "Admission number", student.admissionNumber],
+              ["gender", "Gender", student.gender], ["classAtAdmission", "Class at admission", student.classAtAdmission],
+              ["stateOfOrigin", "State of origin", student.stateOfOrigin], ["lgaOfOrigin", "Local government area", student.lgaOfOrigin],
+              ["tribe", "Tribe", student.tribe], ["parentName", "Parent or guardian", student.parentName],
+              ["parentPhone", "Parent phone", student.parentPhone], ["parentReligion", "Parent religion", student.parentReligion],
+            ] as const).map(([name, label, value]) => <label className="field" key={name}>{label}<input className="input" name={name} defaultValue={value ?? ""} required={name === "name"} /></label>)}
+            <label className="field">Date of birth<input className="input" name="dob" type="date" defaultValue={student.dob?.toISOString().slice(0, 10) ?? ""} /></label>
+            <label className="field">Date of admission<input className="input" name="dateOfAdmission" type="date" defaultValue={student.dateOfAdmission?.toISOString().slice(0, 10) ?? ""} /></label>
+            <label className="field profile-field-wide">Parent address<textarea className="input" name="parentAddress" defaultValue={student.parentAddress ?? ""} /></label>
+          </div>
+          <div className="form-actions"><SubmitButton pendingLabel="Saving...">Save changes</SubmitButton></div>
+        </form>
+      </details>}
+
       <section className="grid two-column student-details-grid">
         <div className="grid">
           <article className="card card-pad">
@@ -118,6 +144,11 @@ export default async function StudentPage({ params }: { params: Promise<{ id: st
           </div>
         </article>
       </section>
+      {user.role === "OWNER" && <section className="card card-pad" style={{ marginTop: 20 }}>
+        <h3>Delete student record</h3>
+        <p className="small muted">Archiving keeps the student’s history. Permanent deletion removes the profile and all related records.</p>
+        <StudentDeleteConfirmation studentId={id} studentName={student.name} archived={student.status === "ARCHIVED"} />
+      </section>}
     </>
   );
 }

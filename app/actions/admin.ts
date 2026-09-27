@@ -252,6 +252,64 @@ export async function archiveStudent(formData: FormData) {
   redirect("/students?toast=student-archived");
 }
 
+export async function updateStudent(formData: FormData) {
+  const user = await requireOwner();
+  const data = z.object({
+    studentId: z.string().regex(/^\d+$/),
+    name: z.string().trim().min(2).max(300),
+    admissionNumber: z.string().trim().max(80),
+    gender: z.string().trim().max(15),
+    dob: optionalDate,
+    classAtAdmission: z.string().trim().max(100),
+    dateOfAdmission: optionalDate,
+    stateOfOrigin: z.string().trim().max(100),
+    lgaOfOrigin: z.string().trim().max(100),
+    tribe: z.string().trim().max(100),
+    parentName: z.string().trim().max(100),
+    parentPhone: z.string().trim().max(50),
+    parentAddress: z.string().trim().max(500),
+    parentReligion: z.string().trim().max(100),
+  }).parse(Object.fromEntries(formData));
+  const id = BigInt(data.studentId);
+  const student = await db.studentProfile.findFirst({ where: { id, schoolId: user.schoolId } });
+  if (!student) throw new Error("Student not found.");
+  const admissionNumber = data.admissionNumber.toUpperCase() || null;
+  if (admissionNumber) {
+    const duplicate = await db.studentProfile.findUnique({ where: { schoolId_admissionNumber: { schoolId: user.schoolId, admissionNumber } } });
+    if (duplicate && duplicate.id !== id) redirect(`/students/${id}?error=admission-exists`);
+  }
+  await db.studentProfile.update({ where: { id }, data: {
+    name: data.name, admissionNumber, gender: data.gender || null, dob: data.dob,
+    classAtAdmission: data.classAtAdmission || null, dateOfAdmission: data.dateOfAdmission,
+    yearOfAdmission: data.dateOfAdmission?.getFullYear().toString() ?? null,
+    stateOfOrigin: data.stateOfOrigin || null, lgaOfOrigin: data.lgaOfOrigin || null,
+    tribe: data.tribe || null, parentName: data.parentName || null,
+    parentPhone: data.parentPhone || null, parentAddress: data.parentAddress || null,
+    parentReligion: data.parentReligion || null,
+  } });
+  revalidatePath("/students");
+  revalidatePath(`/students/${id}`);
+  redirect(`/students/${id}?updated=1`);
+}
+
+export async function deleteStudent(formData: FormData) {
+  const user = await requireOwner();
+  const id = BigInt(z.string().regex(/^\d+$/).parse(formData.get("studentId")));
+  const student = await db.studentProfile.findFirst({ where: { id, schoolId: user.schoolId }, select: { id: true, photoPublicId: true } });
+  if (!student) throw new Error("Student not found.");
+  await db.$transaction(async (tx) => {
+    const enrollments = await tx.enrollment.findMany({ where: { studentId: id, schoolId: user.schoolId }, select: { id: true } });
+    const enrollmentIds = enrollments.map((item) => item.id);
+    await tx.resultScore.deleteMany({ where: { enrollmentId: { in: enrollmentIds }, schoolId: user.schoolId } });
+    await tx.termReport.deleteMany({ where: { enrollmentId: { in: enrollmentIds }, schoolId: user.schoolId } });
+    await tx.enrollment.deleteMany({ where: { studentId: id, schoolId: user.schoolId } });
+    await tx.studentProfile.delete({ where: { id } });
+  });
+  if (student.photoPublicId) await cloudinary.uploader.destroy(student.photoPublicId).catch(() => undefined);
+  revalidatePath("/students");
+  redirect("/students?toast=student-deleted");
+}
+
 const promotionSchema = z.object({
   sourceSessionId: positiveInt,
   targetSessionId: positiveInt,
