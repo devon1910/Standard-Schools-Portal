@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseImportDate, studentImportRowSchema } from "../lib/student-import";
+import { NIGERIAN_LOCATIONS, validateOrigin } from "../lib/nigeria-locations";
 
 describe("student import validation", () => {
   it("accepts a real ISO calendar date", () => {
@@ -16,5 +17,19 @@ describe("student import validation", () => {
     expect(studentImportRowSchema.safeParse(base).success).toBe(false);
     expect(studentImportRowSchema.safeParse({ ...base, admissionNumber: "STD/1", gender: "Other" }).success).toBe(false);
     expect(studentImportRowSchema.safeParse({ ...base, admissionNumber: "STD/1" }).success).toBe(true);
+  });
+});
+
+describe("student origin validation", () => {
+  it("uses all states and their LGAs", () => {
+    expect(Object.keys(NIGERIAN_LOCATIONS)).toHaveLength(37);
+    expect(Object.values(NIGERIAN_LOCATIONS).flat()).toHaveLength(774);
+  });
+
+  it("normalizes case but rejects misspellings and mismatched LGAs", () => {
+    expect(validateOrigin("lagos", "ikeja")).toEqual({ state: "Lagos", lga: "Ikeja" });
+    expect(validateOrigin("Lags", "Ikeja").error).toMatch(/State of origin/);
+    expect(validateOrigin("Lagos", "Aba North").error).toMatch(/does not belong/);
+    expect(validateOrigin("", "Ikeja").error).toMatch(/Choose a state/);
   });
 });

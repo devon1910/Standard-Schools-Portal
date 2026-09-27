@@ -1,11 +1,12 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
-import { ArrowLeft, Archive, Phone, UserRound } from "lucide-react";
+import { ArrowLeft, Archive, Pencil, Phone, UserRound } from "lucide-react";
 import { notFound } from "next/navigation";
 import { archiveStudent, updateStudent } from "@/app/actions/admin";
 import ConfirmSubmitButton from "@/components/confirm-submit-button";
 import SubmitButton from "@/components/submit-button";
 import StudentDeleteConfirmation from "@/components/student-delete-confirmation";
+import StudentOriginFields from "@/components/student-origin-fields";
 import StudentPhotoUpload from "@/components/student-photo-upload";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -76,22 +77,23 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
       {query.updated === "1" && <div className="notice info">Student details updated.</div>}
 
       {user.role === "OWNER" && <details className="card card-pad" style={{ marginBottom: 20 }}>
-        <summary>Edit student details</summary>
-        <form action={updateStudent} className="grid" style={{ marginTop: 20 }}>
+        <summary className="button button-secondary" style={{ cursor: "pointer", display: "inline-flex", listStyle: "none" }}><Pencil size={16} />Edit student details</summary>
+        <form action={updateStudent} className="form-grid" style={{ marginTop: 20 }}>
           <input type="hidden" name="studentId" value={id} />
-          <div className="profile-grid">
+          <>
             {([
               ["name", "Full name", student.name], ["admissionNumber", "Admission number", student.admissionNumber],
-              ["gender", "Gender", student.gender], ["classAtAdmission", "Class at admission", student.classAtAdmission],
-              ["stateOfOrigin", "State of origin", student.stateOfOrigin], ["lgaOfOrigin", "Local government area", student.lgaOfOrigin],
+              ["classAtAdmission", "Class at admission", student.classAtAdmission],
               ["tribe", "Tribe", student.tribe], ["parentName", "Parent or guardian", student.parentName],
               ["parentPhone", "Parent phone", student.parentPhone], ["parentReligion", "Parent religion", student.parentReligion],
             ] as const).map(([name, label, value]) => <label className="field" key={name}>{label}<input className="input" name={name} defaultValue={value ?? ""} required={name === "name"} /></label>)}
+            <label className="field">Gender<select className="select" name="gender" defaultValue={student.gender ?? ""}><option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option></select></label>
+            <StudentOriginFields initialState={student.stateOfOrigin ?? ""} initialLga={student.lgaOfOrigin ?? ""} />
             <label className="field">Date of birth<input className="input" name="dob" type="date" defaultValue={student.dob?.toISOString().slice(0, 10) ?? ""} /></label>
             <label className="field">Date of admission<input className="input" name="dateOfAdmission" type="date" defaultValue={student.dateOfAdmission?.toISOString().slice(0, 10) ?? ""} /></label>
-            <label className="field profile-field-wide">Parent address<textarea className="input" name="parentAddress" defaultValue={student.parentAddress ?? ""} /></label>
-          </div>
-          <div className="form-actions"><SubmitButton pendingLabel="Saving...">Save changes</SubmitButton></div>
+            <label className="field full">Parent address<textarea className="textarea" name="parentAddress" defaultValue={student.parentAddress ?? ""} /></label>
+          </>
+          <div className="form-actions field full"><SubmitButton pendingLabel="Saving...">Save changes</SubmitButton></div>
         </form>
       </details>}
 

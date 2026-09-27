@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { requireOwner, requireUser } from "@/lib/auth";
 import { cloudinary } from "@/lib/cloudinary";
 import { MAX_STUDENT_IMPORT_ROWS, parseImportDate, studentImportRowSchema, type StudentImportRow } from "@/lib/student-import";
+import { validateOrigin } from "@/lib/nigeria-locations";
 
 const positiveInt = z.coerce.number().int().positive();
 const optionalDate = z.preprocess((value) => (value ? new Date(String(value)) : null), z.date().nullable());
@@ -65,16 +66,22 @@ export async function createStudent(formData: FormData) {
   const data = z.object({
     name: z.string().trim().min(2).max(300),
     admissionNumber: z.string().trim().max(80).optional(),
-    gender: z.string().trim().max(15).optional(),
+    gender: z.enum(["Male", "Female", ""]),
     dob: optionalDate,
     parentName: z.string().trim().max(100).optional(),
     parentPhone: z.string().trim().max(50).optional(),
     parentAddress: z.string().trim().max(500).optional(),
     classAtAdmission: z.string().trim().max(100).optional(),
+    stateOfOrigin: z.string().trim().max(100).optional(),
+    lgaOfOrigin: z.string().trim().max(100).optional(),
+    tribe: z.string().trim().max(100).optional(),
+    parentReligion: z.string().trim().max(100).optional(),
     dateOfAdmission: optionalDate,
     sessionId: positiveInt,
     classId: positiveInt,
   }).parse(Object.fromEntries(formData));
+  const origin = validateOrigin(data.stateOfOrigin ?? "", data.lgaOfOrigin ?? "");
+  if (origin.error) throw new Error(origin.error);
 
   const targetClass = await db.legacyClass.findFirst({ where: { id: data.classId, sessionId: data.sessionId, schoolId: user.schoolId, archivedAt: null } });
   if (!targetClass) redirect("/students?error=invalid-class");
@@ -94,6 +101,10 @@ export async function createStudent(formData: FormData) {
       parentPhone: data.parentPhone || null,
       parentAddress: data.parentAddress || null,
       classAtAdmission: data.classAtAdmission || null,
+      stateOfOrigin: origin.state || null,
+      lgaOfOrigin: origin.lga || null,
+      tribe: data.tribe || null,
+      parentReligion: data.parentReligion || null,
       dateOfAdmission: data.dateOfAdmission,
       yearOfAdmission: data.dateOfAdmission?.getFullYear().toString() ?? null,
       enrollments: { create: { schoolId: user.schoolId, sessionId: data.sessionId, classId: data.classId } },
@@ -143,13 +154,18 @@ export async function importStudents(input: {
       return [];
     }
     seen.set(admissionNumber, row.rowNumber);
+    const origin = validateOrigin(row.stateOfOrigin, row.lgaOfOrigin);
+    if (origin.error) {
+      errors.push({ rowNumber: row.rowNumber, message: origin.error });
+      return [];
+    }
     const dob = parseImportDate(row.dob);
     const dateOfAdmission = parseImportDate(row.dateOfAdmission);
     if (dob === undefined || dateOfAdmission === undefined) {
       errors.push({ rowNumber: row.rowNumber, message: "Dates must use YYYY-MM-DD format." });
       return [];
     }
-    return [{ ...row, admissionNumber, dob, dateOfAdmission }];
+    return [{ ...row, admissionNumber, dob, dateOfAdmission, stateOfOrigin: origin.state, lgaOfOrigin: origin.lga }];
   });
 
   const existing = normalized.length ? await db.studentProfile.findMany({
@@ -180,6 +196,10 @@ export async function importStudents(input: {
           parentName: row.parentName || null,
           parentPhone: row.parentPhone || null,
           parentAddress: row.parentAddress || null,
+          stateOfOrigin: row.stateOfOrigin || null,
+          lgaOfOrigin: row.lgaOfOrigin || null,
+          tribe: row.tribe || null,
+          parentReligion: row.parentReligion || null,
           enrollments: { create: { schoolId: user.schoolId, sessionId, classId } },
         },
       });
@@ -258,7 +278,7 @@ export async function updateStudent(formData: FormData) {
     studentId: z.string().regex(/^\d+$/),
     name: z.string().trim().min(2).max(300),
     admissionNumber: z.string().trim().max(80),
-    gender: z.string().trim().max(15),
+    gender: z.enum(["Male", "Female", ""]),
     dob: optionalDate,
     classAtAdmission: z.string().trim().max(100),
     dateOfAdmission: optionalDate,
@@ -270,6 +290,8 @@ export async function updateStudent(formData: FormData) {
     parentAddress: z.string().trim().max(500),
     parentReligion: z.string().trim().max(100),
   }).parse(Object.fromEntries(formData));
+  const origin = validateOrigin(data.stateOfOrigin, data.lgaOfOrigin);
+  if (origin.error) throw new Error(origin.error);
   const id = BigInt(data.studentId);
   const student = await db.studentProfile.findFirst({ where: { id, schoolId: user.schoolId } });
   if (!student) throw new Error("Student not found.");
@@ -282,7 +304,7 @@ export async function updateStudent(formData: FormData) {
     name: data.name, admissionNumber, gender: data.gender || null, dob: data.dob,
     classAtAdmission: data.classAtAdmission || null, dateOfAdmission: data.dateOfAdmission,
     yearOfAdmission: data.dateOfAdmission?.getFullYear().toString() ?? null,
-    stateOfOrigin: data.stateOfOrigin || null, lgaOfOrigin: data.lgaOfOrigin || null,
+    stateOfOrigin: origin.state || null, lgaOfOrigin: origin.lga || null,
     tribe: data.tribe || null, parentName: data.parentName || null,
     parentPhone: data.parentPhone || null, parentAddress: data.parentAddress || null,
     parentReligion: data.parentReligion || null,

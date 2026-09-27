@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { createStudent } from "@/app/actions/admin";
 import SubmitButton from "@/components/submit-button";
+import StudentOriginFields from "@/components/student-origin-fields";
 
 type SessionOption = { id: number; name: string };
 type ClassOption = { id: number; name: string; sessionId: number };
@@ -53,6 +54,9 @@ export default function StudentCreateForm({
         <label>Class at admission</label>
         <input className="input" name="classAtAdmission" />
       </div>
+      <StudentOriginFields />
+      <div className="field"><label>Tribe</label><input className="input" name="tribe" /></div>
+      <div className="field"><label>Parent religion</label><input className="input" name="parentReligion" /></div>
       <div className="field">
         <label>Parent/guardian</label>
         <input className="input" name="parentName" />

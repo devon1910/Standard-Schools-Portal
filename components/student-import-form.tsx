@@ -5,6 +5,7 @@ import { Download, FileSpreadsheet, Upload } from "lucide-react";
 import ExcelJS from "exceljs";
 import { importStudents, type StudentImportResult } from "@/app/actions/admin";
 import { MAX_STUDENT_IMPORT_ROWS, studentImportRowSchema, type StudentImportRow } from "@/lib/student-import";
+import { validateOrigin } from "@/lib/nigeria-locations";
 
 type SessionOption = { id: number; name: string };
 type ClassOption = { id: number; name: string; sessionId: number };
@@ -12,6 +13,7 @@ type ClassOption = { id: number; name: string; sessionId: number };
 const columns = [
   "Full Name", "Admission Number", "Gender", "Date of Birth", "Date of Admission",
   "Class at Admission", "Parent Name", "Parent Phone", "Parent Address",
+  "State of Origin", "LGA of Origin", "Tribe", "Parent Religion",
 ] as const;
 
 const aliases: Record<string, keyof Omit<StudentImportRow, "rowNumber">> = {
@@ -24,6 +26,9 @@ const aliases: Record<string, keyof Omit<StudentImportRow, "rowNumber">> = {
   parentname: "parentName", guardianname: "parentName", parentguardian: "parentName",
   parentphone: "parentPhone", guardianphone: "parentPhone", phone: "parentPhone",
   parentaddress: "parentAddress", guardianaddress: "parentAddress", address: "parentAddress",
+  stateoforigin: "stateOfOrigin", state: "stateOfOrigin",
+  lgaoforigin: "lgaOfOrigin", localgovernmentarea: "lgaOfOrigin", lga: "lgaOfOrigin",
+  tribe: "tribe", parentreligion: "parentReligion", guardianreligion: "parentReligion",
 };
 
 function normalizeHeader(value: unknown) {
@@ -87,7 +92,7 @@ export default function StudentImportForm({ sessions, classes, defaultSessionId 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Students");
     worksheet.addRow([...columns]);
-    worksheet.addRow(["Ada Okafor", "STD/2026/001", "Female", "2014-05-12", "2026-09-15", "JSS 1", "Chika Okafor", "08012345678", "12 School Road"]);
+    worksheet.addRow(["Ada Okafor", "STD/2026/001", "Female", "2014-05-12", "2026-09-15", "JSS 1", "Chika Okafor", "08012345678", "12 School Road", "Lagos", "Ikeja", "Igbo", "Christianity"]);
     worksheet.columns.forEach((column, index) => { column.width = Math.max(columns[index].length + 3, 18); });
     worksheet.getRow(1).font = { bold: true };
     const buffer = await workbook.xlsx.writeBuffer();
@@ -145,8 +150,11 @@ export default function StudentImportForm({ sessions, classes, defaultSessionId 
         const gender = String(record.gender ?? "").toLowerCase();
         record.gender = gender === "male" ? "Male" : gender === "female" ? "Female" : record.gender ?? "";
         const parsed = studentImportRowSchema.safeParse(record);
-        if (parsed.success) parsedRows.push(parsed.data);
-        else issues.push(`Row ${index + 2}: ${parsed.error.issues[0]?.message ?? "Invalid record."}`);
+        if (parsed.success) {
+          const origin = validateOrigin(parsed.data.stateOfOrigin, parsed.data.lgaOfOrigin);
+          if (origin.error) issues.push(`Row ${index + 2}: ${origin.error}`);
+          else parsedRows.push({ ...parsed.data, stateOfOrigin: origin.state ?? "", lgaOfOrigin: origin.lga ?? "" });
+        } else issues.push(`Row ${index + 2}: ${parsed.error.issues[0]?.message ?? "Invalid record."}`);
       });
       setRows(parsedRows);
       setParseErrors(issues);
@@ -162,7 +170,7 @@ export default function StudentImportForm({ sessions, classes, defaultSessionId 
   return (
     <div style={{ width: "min(900px, 84vw)" }}>
       <div className="notice" style={{ marginBottom: 16 }}>
-        Download the template, keep its column headings, and enter one student per row. Admission numbers must be unique.
+        Download the template, keep its column headings, and enter one student per row. Admission numbers must be unique. State and LGA, when provided, must match the Nigerian locations list exactly (case is ignored).
       </div>
       <div className="form-grid">
         <div className="field">
