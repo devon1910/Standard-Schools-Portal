@@ -283,7 +283,7 @@ export async function updateStudent(formData: FormData) {
     classAtAdmission: z.string().trim().max(100),
     dateOfAdmission: optionalDate,
     stateOfOrigin: z.string().trim().max(100),
-    lgaOfOrigin: z.string().trim().max(100),
+    lgaOfOrigin: z.string().trim().max(100).optional().default(""),
     tribe: z.string().trim().max(100),
     parentName: z.string().trim().max(100),
     parentPhone: z.string().trim().max(50),

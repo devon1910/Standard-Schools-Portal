@@ -99,6 +99,7 @@ export async function saveTermReport(formData: FormData) {
     create: { ...reportData, schoolId: user.schoolId, enrollmentId },
   });
   revalidatePath("/reports");
+  revalidatePath(`/reports/${enrollmentId}`);
 }
 
 export async function saveTermSetup(formData: FormData) {
