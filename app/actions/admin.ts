@@ -388,7 +388,7 @@ export async function updateSchoolSettings(formData: FormData) {
     logoUrl: z.string().trim().url().optional().or(z.literal("")),
   }).parse(Object.fromEntries(formData));
   await db.school.update({ where: { id: user.schoolId }, data: { ...data, motto: data.motto || null, address: data.address || null, phone: data.phone || null, principalName: data.principalName || null, logoUrl: data.logoUrl || null } });
-  revalidatePath("/settings");
+  revalidatePath("/(portal)", "layout");
 }
 
 export async function configureStudentIds(_: { error?: string }, formData: FormData): Promise<{ error?: string }> {

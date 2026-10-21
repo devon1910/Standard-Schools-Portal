@@ -160,6 +160,7 @@ export async function getSession() {
   return { ...session, user: {
     id: account.id, name: account.displayName, username: account.username,
     schoolId: account.schoolId, schoolName: account.school.name, role: account.role,
+    schoolLogoUrl: account.school.logoUrl,
     mustChangePassword: account.mustChangePassword, sessionVersion: account.sessionVersion,
     studentProfileId: account.studentProfileId?.toString() ?? null,
   } };
