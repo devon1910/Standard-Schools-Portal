@@ -121,13 +121,11 @@ export type StudentImportResult = {
 
 export async function importStudents(input: {
   sessionId: number;
-  classId: number;
   rows: StudentImportRow[];
 }): Promise<StudentImportResult> {
   const user = await requireUser();
   const selection = z.object({
     sessionId: positiveInt,
-    classId: positiveInt,
     rows: z.array(studentImportRowSchema).min(1).max(MAX_STUDENT_IMPORT_ROWS),
   }).safeParse(input);
 
@@ -135,25 +133,28 @@ export async function importStudents(input: {
     return { success: false, imported: 0, errors: [{ rowNumber: 0, message: "The import data is invalid or exceeds 1,000 rows." }] };
   }
 
-  const { sessionId, classId, rows } = selection.data;
-  const targetClass = await db.legacyClass.findFirst({
-    where: { id: classId, sessionId, schoolId: user.schoolId, archivedAt: null },
-    select: { name: true },
+  const { sessionId, rows } = selection.data;
+  const classes = await db.legacyClass.findMany({
+    where: { sessionId, schoolId: user.schoolId, archivedAt: null },
+    select: { id: true, name: true },
   });
-  if (!targetClass) {
-    return { success: false, imported: 0, errors: [{ rowNumber: 0, message: "Choose a valid class in the selected session." }] };
-  }
 
   const errors: StudentImportResult["errors"] = [];
   const seen = new Map<string, number>();
   const normalized = rows.flatMap((row) => {
+    const matches = classes.filter((item) => item.name.trim().toLowerCase() === row.className.toLowerCase());
+    if (matches.length !== 1) {
+      errors.push({ rowNumber: row.rowNumber, message: `Class "${row.className}" must match one class in the selected session.` });
+      return [];
+    }
+    const targetClass = matches[0];
     const admissionNumber = row.admissionNumber.toUpperCase();
     const firstSeen = seen.get(admissionNumber);
-    if (firstSeen) {
+    if (admissionNumber && firstSeen) {
       errors.push({ rowNumber: row.rowNumber, message: `Admission number is repeated (first used on row ${firstSeen}).` });
       return [];
     }
-    seen.set(admissionNumber, row.rowNumber);
+    if (admissionNumber) seen.set(admissionNumber, row.rowNumber);
     const origin = validateOrigin(row.stateOfOrigin, row.lgaOfOrigin);
     if (origin.error) {
       errors.push({ rowNumber: row.rowNumber, message: origin.error });
@@ -165,7 +166,7 @@ export async function importStudents(input: {
       errors.push({ rowNumber: row.rowNumber, message: "Dates must use YYYY-MM-DD format." });
       return [];
     }
-    return [{ ...row, admissionNumber, dob, dateOfAdmission, stateOfOrigin: origin.state, lgaOfOrigin: origin.lga }];
+    return [{ ...row, admissionNumber, dob, dateOfAdmission, classId: targetClass.id, stateOfOrigin: origin.state, lgaOfOrigin: origin.lga }];
   });
 
   const existing = normalized.length ? await db.studentProfile.findMany({
@@ -174,7 +175,7 @@ export async function importStudents(input: {
   }) : [];
   const existingNumbers = new Set(existing.map((item) => item.admissionNumber));
   const validRows = normalized.filter((row) => {
-    if (!existingNumbers.has(row.admissionNumber)) return true;
+    if (!row.admissionNumber || !existingNumbers.has(row.admissionNumber)) return true;
     errors.push({ rowNumber: row.rowNumber, message: "Admission number already belongs to another student." });
     return false;
   });
@@ -187,12 +188,12 @@ export async function importStudents(input: {
         data: {
           schoolId: user.schoolId,
           name: row.name,
-          admissionNumber: row.admissionNumber,
+          admissionNumber: row.admissionNumber || null,
           gender: row.gender || null,
           dob: row.dob,
           dateOfAdmission: row.dateOfAdmission,
           yearOfAdmission: row.dateOfAdmission?.getFullYear().toString() ?? null,
-          classAtAdmission: row.classAtAdmission || targetClass.name,
+          classAtAdmission: row.classAtAdmission || row.className,
           parentName: row.parentName || null,
           parentPhone: row.parentPhone || null,
           parentAddress: row.parentAddress || null,
@@ -200,11 +201,11 @@ export async function importStudents(input: {
           lgaOfOrigin: row.lgaOfOrigin || null,
           tribe: row.tribe || null,
           parentReligion: row.parentReligion || null,
-          enrollments: { create: { schoolId: user.schoolId, sessionId, classId } },
+          enrollments: { create: { schoolId: user.schoolId, sessionId, classId: row.classId } },
         },
       });
     }
-  });
+  }, { timeout: 60_000 });
 
   revalidatePath("/students");
   return { success: true, imported: validRows.length, errors: [] };

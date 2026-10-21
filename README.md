@@ -14,7 +14,7 @@ To request a workspace directly, email [davidsonekpokpobe@gmail.com](mailto:davi
 
 - School-isolated owner and staff accounts with temporary-password rotation and login lockout.
 - Permanent student profiles with session-based enrollments and term fee tracking.
-- Transactional bulk student import from Excel or CSV, with a downloadable template, preview, validation, and duplicate-admission checks.
+- Transactional bulk student import from Word (.docx), Excel, or CSV, with Word and Excel templates, preview, and validation. Only first name, last name, class, gender, and date of birth are required. Class names match classes in the selected session. Save older .doc files as .docx before importing.
 - Guided session setup and bulk promotion, including left-school and graduated outcomes.
 - Sessions, classes, class categories, subjects, and a signed-upload question bank.
 - Class-wide subject configuration and spreadsheet-style 20/20/60 score sheets.

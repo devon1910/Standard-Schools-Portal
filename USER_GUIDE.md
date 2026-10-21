@@ -60,6 +60,18 @@ Owners can manage the academic structure.
 
 Each student has one permanent profile. Their class history is stored separately for each session.
 
+### Import students from Word, Excel, or CSV
+
+1. Open **Students**, then **Import students**.
+2. Download the **Word template** or **Excel template**.
+3. Keep the headings. Replace the example with one student per row.
+4. Enter **First Name**, **Last Name**, **Class**, **Gender**, and **Date of Birth**. Other fields are optional. Use `YYYY-MM-DD` for dates.
+5. Choose the **Session**. Each class name must match a class in that session.
+6. Select **Choose file**. Use `.docx`, `.xlsx`, or `.csv`. Save older Word `.doc` files as `.docx` first.
+7. Review the preview. Correct any errors, then select **Import**.
+
+An import can contain up to 1,000 students. If any row has an error, no students are imported.
+
 ### Add or replace a passport photograph
 
 1. Open **Students** and find the student by name or admission number.
