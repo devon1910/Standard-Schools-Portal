@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const migration = readFileSync(resolve("prisma/migrations/20260824_fullstack_rewrite/migration.sql"), "utf8");
+const studentIds = readFileSync(resolve("prisma/migrations/20261021_student_ids/migration.sql"), "utf8");
 
 describe("production migration safety", () => {
   it("is additive and preserves legacy student and identity tables", () => {
@@ -15,5 +16,12 @@ describe("production migration safety", () => {
     for (const table of ["School", "PortalUser", "StudentProfile", "Enrollment", "ClassSubject", "ResultScore", "TermSetup", "TermReport"]) {
       expect(migration).toContain(`CREATE TABLE "${table}"`);
     }
+  });
+
+  it("preserves existing identifiers and locks the school ID format after setup", () => {
+    expect(studentIds).not.toMatch(/DROP\s+(TABLE|COLUMN)|UPDATE\s+"StudentProfile"|ALTER\s+TABLE\s+"Students"/i);
+    expect(studentIds).toContain('"StudentProfile_schoolId_studentId_key"');
+    expect(studentIds).toContain('OLD."studentIdPrefix" IS NOT NULL');
+    expect(studentIds).toContain('NEW."studentIdDigits" IS DISTINCT FROM OLD."studentIdDigits"');
   });
 });

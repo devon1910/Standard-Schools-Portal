@@ -10,6 +10,7 @@ import { getCurrentSessionId } from "@/lib/current-session";
 import { EmptyTableRow } from "@/components/empty-state";
 import StudentImportForm from "@/components/student-import-form";
 import StudentSearchInput from "@/components/student-search-input";
+import { displayStudentId } from "@/lib/student-id";
 
 const PAGE_SIZE = 20;
 
@@ -24,7 +25,7 @@ type StudentsSearchParams = Promise<{
 export default async function StudentsPage({ searchParams }: { searchParams: StudentsSearchParams }) {
   const user = await requireUser();
   const params = await searchParams;
-  const [sessions, allClasses] = await Promise.all([
+  const [sessions, allClasses, school] = await Promise.all([
     db.legacySession.findMany({
       where: { schoolId: user.schoolId },
       orderBy: { id: "desc" },
@@ -35,6 +36,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Stu
       orderBy: { name: "asc" },
       select: { id: true, name: true, sessionId: true },
     }),
+    db.school.findUnique({ where: { id: user.schoolId }, select: { studentIdPrefix: true } }),
   ]);
   const sessionId = await getCurrentSessionId(user.schoolId, sessions, params.session);
   const classes = allClasses.filter((item) => item.sessionId === sessionId);
@@ -52,6 +54,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Stu
             OR: [
               { name: { contains: query, mode: "insensitive" as const } },
               { admissionNumber: { contains: query, mode: "insensitive" as const } },
+              { studentId: { contains: query, mode: "insensitive" as const } },
             ],
           },
         }
@@ -71,6 +74,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Stu
   const errorMap: Record<string, string> = {
     "admission-exists": "That admission number is already assigned to another student.",
     "invalid-class": "Choose a valid class in the selected session.",
+    "student-id-setup-required": "Ask the school owner to set the student ID format in Settings before adding students.",
   };
 
   return (
@@ -95,6 +99,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Stu
       </header>
 
       {params.error && <div className="notice error">{errorMap[params.error] ?? "The student could not be saved."}</div>}
+      {!school?.studentIdPrefix && <div className="notice warning">The school owner must set the permanent student ID format in <Link href="/settings">Settings</Link> before students can be added or imported.</div>}
 
       <form className="filter-bar card">
         <div className="field search">
@@ -124,7 +129,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Stu
         <div className="table-wrap">
           <table className="table">
             <thead>
-              <tr><th>Student</th><th>Admission no.</th><th>Class</th><th>First-term fee</th><th>Balance</th><th>Actions</th></tr>
+              <tr><th>Student</th><th>Student ID</th><th>Class</th><th>First-term fee</th><th>Balance</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {enrollments.map((item) => (
@@ -135,7 +140,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Stu
                       <div><strong>{item.student.name}</strong><div className="small muted">{item.student.gender || "Gender not set"}</div></div>
                     </div>
                   </td>
-                  <td>{item.student.admissionNumber || "-"}</td>
+                  <td>{displayStudentId(item.student)}</td>
                   <td>{item.class.name}</td>
                   <td><span className={`badge ${item.firstTermFeePaid ? "success" : "warning"}`}>{item.firstTermFeePaid ? "Paid" : "Unpaid"}</span></td>
                   <td>{money.format(Number(item.firstTermBalance))}</td>

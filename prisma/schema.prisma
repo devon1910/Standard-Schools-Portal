@@ -34,6 +34,9 @@ model School {
   logoUrl       String?
   logoPublicId  String?
   principalName String?
+  studentIdPrefix String?
+  studentIdDigits Int       @default(3)
+  nextStudentNumber Int     @default(1)
   users         PortalUser[]
   students      StudentProfile[]
   enrollments   Enrollment[]
@@ -183,6 +186,7 @@ model StudentProfile {
   schoolId         Int
   school           School        @relation(fields: [schoolId], references: [id])
   name             String
+  studentId        String?
   admissionNumber  String?
   gender           String?
   dob              DateTime?
@@ -205,6 +209,7 @@ model StudentProfile {
   archivedAt       DateTime?
 
   @@unique([schoolId, admissionNumber])
+  @@unique([schoolId, studentId])
   @@index([schoolId, name])
 }
 

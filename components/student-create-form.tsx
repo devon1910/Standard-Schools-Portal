@@ -30,10 +30,7 @@ export default function StudentCreateForm({
         <label>Full name</label>
         <input className="input" name="name" required />
       </div>
-      <div className="field">
-        <label>Admission number</label>
-        <input className="input" name="admissionNumber" />
-      </div>
+      <p className="notice info field full">The system generates the student ID from the format in school Settings.</p>
       <div className="field">
         <label>Gender</label>
         <select className="select" name="gender">

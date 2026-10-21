@@ -117,7 +117,7 @@ export default function StudentImportForm({ sessions, classes, defaultSessionId 
   return (
     <div style={{ width: "min(900px, 84vw)" }}>
       <div className="notice" style={{ marginBottom: 16 }}>
-        Use Word (.docx), Excel (.xlsx), or CSV. Keep the headings and enter one student per row. First name, last name, class, gender, and date of birth are required. All other fields are optional. Use YYYY-MM-DD for dates. Class must match a class in the selected session. Save older Word .doc files as .docx first.
+        Use Word (.docx), Excel (.xlsx), or CSV. Keep the headings and enter one student per row. First name, last name, class, gender, and date of birth are required. All other fields are optional. The system generates student IDs from school Settings. Use YYYY-MM-DD for dates. Class must match a class in the selected session. Save older Word .doc files as .docx first.
       </div>
       <div className="form-grid">
         <div className="field">

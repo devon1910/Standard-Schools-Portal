@@ -9,7 +9,6 @@ export const studentImportRowSchema = z.object({
   firstName: z.string().trim().min(1, "First name is required.").max(150),
   lastName: z.string().trim().min(1, "Last name is required.").max(149),
   className: z.string().trim().min(1, "Class is required.").max(100),
-  admissionNumber: optionalText(80),
   gender: z.enum(["Male", "Female"], { error: "Gender must be Male or Female." }),
   dob: z.string().trim().refine((value) => Boolean(value && parseImportDate(value)), "Date of birth is required. Use a valid YYYY-MM-DD date."),
   dateOfAdmission: optionalText(20),

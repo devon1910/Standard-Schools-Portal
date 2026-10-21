@@ -10,6 +10,8 @@ import { requireOwner, requireUser } from "@/lib/auth";
 import { cloudinary } from "@/lib/cloudinary";
 import { MAX_STUDENT_IMPORT_ROWS, parseImportDate, studentImportRowSchema, type StudentImportRow } from "@/lib/student-import";
 import { validateOrigin } from "@/lib/nigeria-locations";
+import { allocateStudentIds, StudentIdSetupRequired } from "@/lib/allocate-student-ids";
+import { studentIdConfigSchema } from "@/lib/student-id";
 
 const positiveInt = z.coerce.number().int().positive();
 const optionalDate = z.preprocess((value) => (value ? new Date(String(value)) : null), z.date().nullable());
@@ -65,7 +67,6 @@ export async function createStudent(formData: FormData) {
   const user = await requireUser();
   const data = z.object({
     name: z.string().trim().min(2).max(300),
-    admissionNumber: z.string().trim().max(80).optional(),
     gender: z.enum(["Male", "Female", ""]),
     dob: optionalDate,
     parentName: z.string().trim().max(100).optional(),
@@ -85,31 +86,34 @@ export async function createStudent(formData: FormData) {
 
   const targetClass = await db.legacyClass.findFirst({ where: { id: data.classId, sessionId: data.sessionId, schoolId: user.schoolId, archivedAt: null } });
   if (!targetClass) redirect("/students?error=invalid-class");
-  const admissionNumber = data.admissionNumber?.toUpperCase() || null;
-  if (admissionNumber) {
-    const duplicate = await db.studentProfile.findUnique({ where: { schoolId_admissionNumber: { schoolId: user.schoolId, admissionNumber } } });
-    if (duplicate) redirect("/students?error=admission-exists");
+  try {
+    await db.$transaction(async (tx) => {
+      const [studentId] = await allocateStudentIds(tx, user.schoolId, 1);
+      await tx.studentProfile.create({
+        data: {
+          schoolId: user.schoolId,
+          name: data.name,
+          studentId,
+          gender: data.gender || null,
+          dob: data.dob,
+          parentName: data.parentName || null,
+          parentPhone: data.parentPhone || null,
+          parentAddress: data.parentAddress || null,
+          classAtAdmission: data.classAtAdmission || null,
+          stateOfOrigin: origin.state || null,
+          lgaOfOrigin: origin.lga || null,
+          tribe: data.tribe || null,
+          parentReligion: data.parentReligion || null,
+          dateOfAdmission: data.dateOfAdmission,
+          yearOfAdmission: data.dateOfAdmission?.getFullYear().toString() ?? null,
+          enrollments: { create: { schoolId: user.schoolId, sessionId: data.sessionId, classId: data.classId } },
+        },
+      });
+    });
+  } catch (error) {
+    if (error instanceof StudentIdSetupRequired) redirect("/students?error=student-id-setup-required");
+    throw error;
   }
-  await db.studentProfile.create({
-    data: {
-      schoolId: user.schoolId,
-      name: data.name,
-      admissionNumber,
-      gender: data.gender || null,
-      dob: data.dob,
-      parentName: data.parentName || null,
-      parentPhone: data.parentPhone || null,
-      parentAddress: data.parentAddress || null,
-      classAtAdmission: data.classAtAdmission || null,
-      stateOfOrigin: origin.state || null,
-      lgaOfOrigin: origin.lga || null,
-      tribe: data.tribe || null,
-      parentReligion: data.parentReligion || null,
-      dateOfAdmission: data.dateOfAdmission,
-      yearOfAdmission: data.dateOfAdmission?.getFullYear().toString() ?? null,
-      enrollments: { create: { schoolId: user.schoolId, sessionId: data.sessionId, classId: data.classId } },
-    },
-  });
   revalidatePath("/students");
 }
 
@@ -140,7 +144,6 @@ export async function importStudents(input: {
   });
 
   const errors: StudentImportResult["errors"] = [];
-  const seen = new Map<string, number>();
   const normalized = rows.flatMap((row) => {
     const matches = classes.filter((item) => item.name.trim().toLowerCase() === row.className.toLowerCase());
     if (matches.length !== 1) {
@@ -148,13 +151,6 @@ export async function importStudents(input: {
       return [];
     }
     const targetClass = matches[0];
-    const admissionNumber = row.admissionNumber.toUpperCase();
-    const firstSeen = seen.get(admissionNumber);
-    if (admissionNumber && firstSeen) {
-      errors.push({ rowNumber: row.rowNumber, message: `Admission number is repeated (first used on row ${firstSeen}).` });
-      return [];
-    }
-    if (admissionNumber) seen.set(admissionNumber, row.rowNumber);
     const origin = validateOrigin(row.stateOfOrigin, row.lgaOfOrigin);
     if (origin.error) {
       errors.push({ rowNumber: row.rowNumber, message: origin.error });
@@ -166,49 +162,44 @@ export async function importStudents(input: {
       errors.push({ rowNumber: row.rowNumber, message: "Dates must use YYYY-MM-DD format." });
       return [];
     }
-    return [{ ...row, admissionNumber, dob, dateOfAdmission, classId: targetClass.id, stateOfOrigin: origin.state, lgaOfOrigin: origin.lga }];
-  });
-
-  const existing = normalized.length ? await db.studentProfile.findMany({
-    where: { schoolId: user.schoolId, admissionNumber: { in: normalized.map((row) => row.admissionNumber) } },
-    select: { admissionNumber: true },
-  }) : [];
-  const existingNumbers = new Set(existing.map((item) => item.admissionNumber));
-  const validRows = normalized.filter((row) => {
-    if (!row.admissionNumber || !existingNumbers.has(row.admissionNumber)) return true;
-    errors.push({ rowNumber: row.rowNumber, message: "Admission number already belongs to another student." });
-    return false;
+    return [{ ...row, dob, dateOfAdmission, classId: targetClass.id, stateOfOrigin: origin.state, lgaOfOrigin: origin.lga }];
   });
 
   if (errors.length) return { success: false, imported: 0, errors: errors.sort((a, b) => a.rowNumber - b.rowNumber) };
 
-  await db.$transaction(async (tx) => {
-    for (const row of validRows) {
-      await tx.studentProfile.create({
-        data: {
-          schoolId: user.schoolId,
-          name: row.name,
-          admissionNumber: row.admissionNumber || null,
-          gender: row.gender || null,
-          dob: row.dob,
-          dateOfAdmission: row.dateOfAdmission,
-          yearOfAdmission: row.dateOfAdmission?.getFullYear().toString() ?? null,
-          classAtAdmission: row.classAtAdmission || row.className,
-          parentName: row.parentName || null,
-          parentPhone: row.parentPhone || null,
-          parentAddress: row.parentAddress || null,
-          stateOfOrigin: row.stateOfOrigin || null,
-          lgaOfOrigin: row.lgaOfOrigin || null,
-          tribe: row.tribe || null,
-          parentReligion: row.parentReligion || null,
-          enrollments: { create: { schoolId: user.schoolId, sessionId, classId: row.classId } },
-        },
-      });
-    }
-  }, { timeout: 60_000 });
+  try {
+    await db.$transaction(async (tx) => {
+      const ids = await allocateStudentIds(tx, user.schoolId, normalized.length);
+      for (const [index, row] of normalized.entries()) {
+        await tx.studentProfile.create({
+          data: {
+            schoolId: user.schoolId,
+            name: row.name,
+            studentId: ids[index],
+            gender: row.gender || null,
+            dob: row.dob,
+            dateOfAdmission: row.dateOfAdmission,
+            yearOfAdmission: row.dateOfAdmission?.getFullYear().toString() ?? null,
+            classAtAdmission: row.classAtAdmission || row.className,
+            parentName: row.parentName || null,
+            parentPhone: row.parentPhone || null,
+            parentAddress: row.parentAddress || null,
+            stateOfOrigin: row.stateOfOrigin || null,
+            lgaOfOrigin: row.lgaOfOrigin || null,
+            tribe: row.tribe || null,
+            parentReligion: row.parentReligion || null,
+            enrollments: { create: { schoolId: user.schoolId, sessionId, classId: row.classId } },
+          },
+        });
+      }
+    }, { timeout: 60_000 });
+  } catch (error) {
+    if (error instanceof StudentIdSetupRequired) return { success: false, imported: 0, errors: [{ rowNumber: 0, message: error.message }] };
+    throw error;
+  }
 
   revalidatePath("/students");
-  return { success: true, imported: validRows.length, errors: [] };
+  return { success: true, imported: normalized.length, errors: [] };
 }
 
 const studentPhotoSchema = z.object({
@@ -278,7 +269,6 @@ export async function updateStudent(formData: FormData) {
   const data = z.object({
     studentId: z.string().regex(/^\d+$/),
     name: z.string().trim().min(2).max(300),
-    admissionNumber: z.string().trim().max(80),
     gender: z.enum(["Male", "Female", ""]),
     dob: optionalDate,
     classAtAdmission: z.string().trim().max(100),
@@ -296,13 +286,8 @@ export async function updateStudent(formData: FormData) {
   const id = BigInt(data.studentId);
   const student = await db.studentProfile.findFirst({ where: { id, schoolId: user.schoolId } });
   if (!student) throw new Error("Student not found.");
-  const admissionNumber = data.admissionNumber.toUpperCase() || null;
-  if (admissionNumber) {
-    const duplicate = await db.studentProfile.findUnique({ where: { schoolId_admissionNumber: { schoolId: user.schoolId, admissionNumber } } });
-    if (duplicate && duplicate.id !== id) redirect(`/students/${id}?error=admission-exists`);
-  }
   await db.studentProfile.update({ where: { id }, data: {
-    name: data.name, admissionNumber, gender: data.gender || null, dob: data.dob,
+    name: data.name, gender: data.gender || null, dob: data.dob,
     classAtAdmission: data.classAtAdmission || null, dateOfAdmission: data.dateOfAdmission,
     yearOfAdmission: data.dateOfAdmission?.getFullYear().toString() ?? null,
     stateOfOrigin: origin.state || null, lgaOfOrigin: origin.lga || null,
@@ -403,6 +388,20 @@ export async function updateSchoolSettings(formData: FormData) {
   }).parse(Object.fromEntries(formData));
   await db.school.update({ where: { id: user.schoolId }, data: { ...data, motto: data.motto || null, address: data.address || null, phone: data.phone || null, principalName: data.principalName || null, logoUrl: data.logoUrl || null } });
   revalidatePath("/settings");
+}
+
+export async function configureStudentIds(_: { error?: string }, formData: FormData): Promise<{ error?: string }> {
+  const user = await requireOwner();
+  const parsed = studentIdConfigSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the student ID format." };
+  const result = await db.school.updateMany({
+    where: { id: user.schoolId, studentIdPrefix: null },
+    data: { studentIdPrefix: parsed.data.prefix, studentIdDigits: parsed.data.digits, nextStudentNumber: parsed.data.start },
+  });
+  if (!result.count) return { error: "The student ID format is already set. It cannot be changed." };
+  revalidatePath("/settings");
+  revalidatePath("/students");
+  return {};
 }
 
 export async function createPortalUser(formData: FormData) {

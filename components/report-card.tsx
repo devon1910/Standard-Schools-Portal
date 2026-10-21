@@ -2,6 +2,7 @@
 import type { ClassReportData } from "@/lib/report-data";
 import { formatDate } from "@/lib/format";
 import { ordinal } from "@/lib/result-calculations";
+import { displayStudentId } from "@/lib/student-id";
 
 type StudentSummary = ClassReportData["students"][number];
 
@@ -28,7 +29,7 @@ export default function ReportCard({ data, student }: { data: ClassReportData; s
       <section className="report-meta">
         <p><strong>NAME:</strong> {student.enrollment.student.name.toUpperCase()}</p><p><strong>SEX:</strong> {student.enrollment.student.gender?.toUpperCase() ?? "-"}</p>
         <p><strong>CLASS:</strong> {data.classInfo.name.toUpperCase()}</p><p><strong>SESSION:</strong> {data.session.name}</p>
-        <p><strong>STUDENT ID:</strong> {student.enrollment.student.admissionNumber ?? "-"}</p><p><strong>TERM:</strong> {data.term.name.toUpperCase()}</p>
+        <p><strong>STUDENT ID:</strong> {displayStudentId(student.enrollment.student)}</p><p><strong>TERM:</strong> {data.term.name.toUpperCase()}</p>
         <p><strong>HIGHEST CLASS AVERAGE:</strong> {data.highestAverage.toFixed(2)}</p><p><strong>POSITION:</strong> {student.position ? ordinal(student.position) : "-"}</p>
         <p><strong>TOTAL STUDENTS IN CLASS:</strong> {data.classSize}</p><p><strong>LOWEST CLASS AVERAGE:</strong> {data.lowestAverage.toFixed(2)}</p>
       </section>

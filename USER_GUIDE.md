@@ -60,6 +60,17 @@ Owners can manage the academic structure.
 
 Each student has one permanent profile. Their class history is stored separately for each session.
 
+The system generates a student ID when you add or import a student. The school owner must first set the format in **Settings**. New records use only the student ID. Existing identifiers stay the same.
+
+### Set the student ID format (owner)
+
+1. Open **Settings**, then **Student IDs**.
+2. Enter the prefix, number width, and starting number. For example, `ADM`, `4`, and `2` produces `ADM0002`.
+3. Check the preview. Confirm that the format can only be set once.
+4. Select **Save permanent student ID format**.
+
+The prefix and number width are locked after you save. The system increases the number for each new student. It skips identifiers that already exist.
+
 ### Import students from Word, Excel, or CSV
 
 1. Open **Students**, then **Import students**.
@@ -74,7 +85,7 @@ An import can contain up to 1,000 students. If any row has an error, no students
 
 ### Add or replace a passport photograph
 
-1. Open **Students** and find the student by name or admission number.
+1. Open **Students** and find the student by name, student ID, or an existing admission number.
 2. Select **View** beside the student.
 3. Select **Upload passport photo**.
 4. Choose a JPG, PNG or WebP image no larger than 5 MB.

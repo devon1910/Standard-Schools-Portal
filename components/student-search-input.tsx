@@ -7,7 +7,11 @@ export default function StudentSearchInput({ query }: { query: string }) {
   const router = useRouter();
   const [value, setValue] = useState(query);
 
-  useEffect(() => setValue(query), [query]);
+  const [previousQuery, setPreviousQuery] = useState(query);
+  if (query !== previousQuery) {
+    setPreviousQuery(query);
+    setValue(query);
+  }
   useEffect(() => {
     if (value.trim() === query) return;
     const timer = window.setTimeout(() => {
@@ -20,5 +24,5 @@ export default function StudentSearchInput({ query }: { query: string }) {
     return () => window.clearTimeout(timer);
   }, [value, query, router]);
 
-  return <input className="input" style={{ paddingLeft: 35 }} name="q" value={value} onChange={(event) => setValue(event.target.value)} placeholder="Name or admission number" aria-label="Find a student" />;
+  return <input className="input" style={{ paddingLeft: 35 }} name="q" value={value} onChange={(event) => setValue(event.target.value)} placeholder="Name, student ID, or admission number" aria-label="Find a student" />;
 }

@@ -1,3 +1,4 @@
+import { displayStudentId } from "@/lib/student-id";
 import { redirect } from "next/navigation";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -27,6 +28,6 @@ export default async function PromotionPage({ searchParams }: { searchParams: Pr
     db.legacyClass.findMany({ where: { sessionId: targetSessionId, schoolId: user.schoolId, archivedAt: null }, orderBy: { name: "asc" } }),
   ]);
   if (!sourceSession || !targetSession) redirect("/promotion");
-  const serialized = sourceClasses.map((item) => ({ id: item.id, name: item.name, students: item.enrollments.map((enrollment) => ({ enrollmentId: enrollment.id.toString(), name: enrollment.student.name, admissionNumber: enrollment.student.admissionNumber })) }));
+  const serialized = sourceClasses.map((item) => ({ id: item.id, name: item.name, students: item.enrollments.map((enrollment) => ({ enrollmentId: enrollment.id.toString(), name: enrollment.student.name, studentId: displayStudentId(enrollment.student) })) }));
   return <><header className="page-header"><div><h2>Review promotion</h2><p>{sourceSession.name} → {targetSession.name}. All students start selected for promotion.</p></div></header><PromotionWizard sourceSessionId={sourceSession.id} targetSessionId={targetSession.id} sourceClasses={serialized} targetClasses={targetClasses.map(({ id, name }) => ({ id, name }))} /></>;
 }

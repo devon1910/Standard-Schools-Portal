@@ -11,6 +11,7 @@ import StudentPhotoUpload from "@/components/student-photo-upload";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDate, money } from "@/lib/format";
+import { displayStudentId } from "@/lib/student-id";
 
 function display(value: string | null | undefined) {
   return value?.trim() || "Not provided";
@@ -57,7 +58,8 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
                 {student.status.toLowerCase()}
               </span>
             </div>
-            <p>Admission number: <strong>{display(student.admissionNumber)}</strong></p>
+            <p>Student ID: <strong>{displayStudentId(student)}</strong></p>
+            {student.admissionNumber && <p>Admission number: <strong>{student.admissionNumber}</strong></p>}
           </div>
         </div>
         <div className="student-hero-actions">
@@ -82,7 +84,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
           <input type="hidden" name="studentId" value={id} />
           <>
             {([
-              ["name", "Full name", student.name], ["admissionNumber", "Admission number", student.admissionNumber],
+              ["name", "Full name", student.name],
               ["classAtAdmission", "Class at admission", student.classAtAdmission],
               ["tribe", "Tribe", student.tribe], ["parentName", "Parent or guardian", student.parentName],
               ["parentPhone", "Parent phone", student.parentPhone], ["parentReligion", "Parent religion", student.parentReligion],
