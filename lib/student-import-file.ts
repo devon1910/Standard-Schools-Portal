@@ -8,7 +8,7 @@ export const importColumns = [
   "Date of Admission", "Class at Admission", "Parent Name", "Parent Phone", "Parent Address",
   "State of Origin", "LGA of Origin", "Tribe", "Parent Religion",
 ];
-export const importExample = ["Ada", "Okafor", "JSS 1", "Female", "2014-05-12"];
+export const importExample = ["Ada", "Okafor", "JSS 1A", "Female", "2014-05-12"];
 const aliases: Record<string, string> = {
   firstname: "firstName", givenname: "firstName", lastname: "lastName", surname: "lastName",
   fullname: "name", name: "name", studentname: "name", class: "className", classname: "className",

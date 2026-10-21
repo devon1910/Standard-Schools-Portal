@@ -136,7 +136,7 @@ export default function StudentImportForm({ sessions, classes, defaultSessionId 
       </div>
       <div className="header-actions" style={{ marginTop: 16, flexWrap: "wrap" }}>
         <button className="button button-secondary" type="button" disabled={pending || !visibleClasses.length} onClick={() => void downloadTemplate()}><Download size={15} /> Download Excel template</button>
-        <button className="button button-secondary" type="button" disabled={pending || !visibleClasses.length} onClick={async () => download(new Blob([await createWordTemplate(exampleClass)], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }), "student-import-template.docx")}><Download size={15} /> Download Word template</button>
+        <button className="button button-secondary" type="button" disabled={pending || !visibleClasses.length} onClick={async () => download(new Blob([await createWordTemplate()], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }), "student-import-template.docx")}><Download size={15} /> Download Word template</button>
         <label className="button button-secondary" style={{ cursor: "pointer" }}>
           <Upload size={15} /> Choose file
           <input type="file" accept=".docx,.xlsx,.csv" disabled={pending} hidden onChange={(event) => void readFile(event.target.files?.[0])} />

@@ -15,7 +15,7 @@ describe("student import validation", () => {
     expect(parseImportDate("31/01/2026")).toBeUndefined();
   });
 
-  const required = { rowNumber: 2, firstName: "Ada", lastName: "Okafor", className: "JSS 1", gender: "Female", dob: "2014-05-12" };
+  const required = { rowNumber: 2, firstName: "Ada", lastName: "Okafor", className: "JSS 1A", gender: "Female", dob: "2014-05-12" };
 
   it("requires only names, class, gender, and date of birth", () => {
     expect(studentImportRowSchema.parse(required).name).toBe("Ada Okafor");
@@ -54,7 +54,7 @@ describe("student import validation", () => {
     expect(parsed.rows[0].parentName).toBe("");
   });
 
-  it("uses the selected session's class in the Word example and escapes its name", async () => {
+  it("escapes XML characters in Word class names", async () => {
     const parsed = parseStudentGrid(await readWordTable(await createWordTemplate("JSS 1A & B")));
     expect(parsed.errors).toEqual([]);
     expect(parsed.rows[0].className).toBe("JSS 1A & B");
