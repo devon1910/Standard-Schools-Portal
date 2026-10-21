@@ -3,6 +3,9 @@ import { randomUUID } from "node:crypto";
 import { hash } from "@node-rs/argon2";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { v2 as cloudinary } from "cloudinary";
+import { createServer, type Server } from "node:http";
+import { readFile } from "node:fs/promises";
 
 // Authenticated checks use only an explicitly selected disposable local database.
 const connectionString = process.env.PORTAL_UI_TEST_DATABASE_URL;
@@ -13,6 +16,8 @@ const logoUrl = "https://school-logos.example.test/crest.svg";
 let db: PrismaClient;
 let schoolId: number;
 let emptySessionId: number;
+let cloudinaryServer: Server;
+const deletedAssets: string[] = [];
 
 test.beforeAll(async ({ baseURL }) => {
   const target = new URL(connectionString!);
@@ -20,6 +25,15 @@ test.beforeAll(async ({ baseURL }) => {
     || !baseURL || !["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname)) {
     throw new Error("Layout checks require a local app and a disposable local database ending in _test.");
   }
+  // The real SDK sends asset deletion to this local stub, never to production Cloudinary.
+  cloudinaryServer = createServer(async (request, response) => {
+    let body = "";
+    for await (const chunk of request) body += chunk.toString();
+    deletedAssets.push(body);
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ result: "ok" }));
+  });
+  await new Promise<void>((resolve, reject) => { cloudinaryServer.once("error", reject); cloudinaryServer.listen(55439, "127.0.0.1", resolve); });
   db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
   schoolId = 900_000 + Math.floor(Math.random() * 100_000);
   await db.school.create({ data: { id: schoolId, name: "Standard International School", shortName: username, logoUrl, studentIdPrefix: "UI", studentIdDigits: 3 } });
@@ -43,12 +57,16 @@ test.afterAll(async () => {
     await db.school.delete({ where: { id: schoolId } });
   } finally {
     await db.$disconnect();
+    if (cloudinaryServer) await new Promise<void>((resolve) => cloudinaryServer.close(() => resolve()));
   }
 });
 
 test.beforeEach(async ({ page }) => {
   await page.route("https://school-logos.example.test/**", (route) => route.fulfill({
     contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#19724b"/><text x="40" y="48" text-anchor="middle" font-size="24" fill="white">SIS</text></svg>',
+  }));
+  await page.route("https://res.cloudinary.com/portal-ui-test/**", (route) => route.fulfill({
+    contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#19724b"/></svg>',
   }));
   await page.goto("/login");
   await page.getByLabel("Username").fill(username);
@@ -57,24 +75,57 @@ test.beforeEach(async ({ page }) => {
   await expect(page).toHaveURL(/\/dashboard$/, { timeout: 20_000 });
 });
 
-test("saved school logos refresh the shared header and broken images have a fallback", async ({ page }) => {
+test("owners can upload, replace, and remove a logo without entering a URL", async ({ page }) => {
+  test.setTimeout(60_000);
   const image = page.locator(".topbar .school-logo");
   await expect(image).toHaveAttribute("src", logoUrl);
   await expect(image).toHaveJSProperty("naturalWidth", 80);
   await page.goto("/settings");
-  const updatedLogo = "https://school-logos.example.test/updated.svg";
-  await page.locator('input[name="logoUrl"]').fill(updatedLogo);
+  await expect(page.locator('input[name="logoUrl"]')).toHaveCount(0);
+  const control = page.getByRole("group", { name: "School logo", exact: true });
+  const file = control.getByLabel("Choose school logo");
+  let uploads = 0;
+  let failUpload = false;
+  const version = 1700000000;
+  await page.route("https://api.cloudinary.com/v1_1/portal-ui-test/image/upload", (route) => {
+    if (failUpload) return route.fulfill({ status: 500, body: "Upload unavailable" });
+    uploads += 1;
+    const body = route.request().postDataBuffer()!.toString();
+    expect(body).toContain(`standard-schools/${schoolId}/logos`);
+    expect(body).toContain("jpg,jpeg,png,webp");
+    const public_id = `standard-schools/${schoolId}/logos/upload-${uploads}`;
+    return route.fulfill({ contentType: "application/json", body: JSON.stringify({ public_id, version, format: "png", signature: cloudinary.utils.api_sign_request({ public_id, version }, "portal-ui-secret") }) });
+  });
+  await file.setInputFiles({ name: "bad.txt", mimeType: "text/plain", buffer: Buffer.from("Not an image") });
+  await expect(control.getByRole("alert")).toContainText("Choose a JPG, PNG, or WebP image.");
+  await file.setInputFiles({ name: "large.png", mimeType: "image/png", buffer: Buffer.alloc(5 * 1024 * 1024 + 1) });
+  await expect(control.getByRole("alert")).toContainText("no larger than 5 MB");
+  expect(uploads).toBe(0);
+  const uploadFile = { name: "school-logo.png", mimeType: "image/png", buffer: await readFile("public/brand/app-icon-64.png") };
+  await file.setInputFiles(uploadFile);
+  const firstUrl = `https://res.cloudinary.com/portal-ui-test/image/upload/v${version}/standard-schools/${schoolId}/logos/upload-1.png`;
+  await expect(image).toHaveAttribute("src", new RegExp(`^${firstUrl.replaceAll(".", "\\.")}`));
+  expect((await db.school.findUniqueOrThrow({ where: { id: schoolId } })).logoPublicId).toBe(`standard-schools/${schoolId}/logos/upload-1`);
   await page.getByRole("button", { name: "Save school settings", exact: true }).click();
-  await expect(image).toHaveAttribute("src", updatedLogo);
+  await expect(image).toHaveAttribute("src", new RegExp(`^${firstUrl.replaceAll(".", "\\.")}`));
   await page.locator('.sidebar a[href="/dashboard"]').click();
-  await expect(image).toHaveAttribute("src", updatedLogo);
+  await expect(image).toHaveAttribute("src", new RegExp(`^${firstUrl.replaceAll(".", "\\.")}`));
   await page.goto("/settings");
-  await page.locator('input[name="logoUrl"]').fill("");
-  await page.getByRole("button", { name: "Save school settings", exact: true }).click();
+  failUpload = true;
+  await file.setInputFiles(uploadFile);
+  await expect(control.getByRole("alert")).toContainText("The logo upload failed");
+  await expect(image).toHaveAttribute("src", new RegExp(`^${firstUrl.replaceAll(".", "\\.")}`));
+  failUpload = false;
+  await file.setInputFiles(uploadFile);
+  await expect(image).toHaveAttribute("src", /upload-2\.png/);
+  expect(deletedAssets.some((body) => body.includes("upload-1"))).toBe(true);
+  await control.getByRole("button", { name: "Remove logo", exact: true }).click();
   await expect(image).toHaveAttribute("src", "/brand/mark-mono-black.svg");
+  expect(deletedAssets.some((body) => body.includes("upload-2"))).toBe(true);
+  expect(await db.school.findUniqueOrThrow({ where: { id: schoolId }, select: { logoUrl: true, logoPublicId: true } })).toEqual({ logoUrl: null, logoPublicId: null });
+  await db.school.update({ where: { id: schoolId }, data: { logoUrl: "https://school-logos.example.test/broken.svg" } });
   await page.route("https://school-logos.example.test/broken.svg", (route) => route.fulfill({ status: 404, body: "Missing" }));
-  await page.locator('input[name="logoUrl"]').fill("https://school-logos.example.test/broken.svg");
-  await page.getByRole("button", { name: "Save school settings", exact: true }).click();
+  await page.goto("/dashboard");
   await expect(image).toHaveAttribute("src", "/brand/mark-mono-black.svg");
 });
 

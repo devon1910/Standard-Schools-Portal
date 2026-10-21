@@ -157,6 +157,11 @@ details.panel[open] > summary { border-bottom: 1px solid var(--line); }
 .class-list { display: flex; flex-wrap: wrap; align-content: start; gap: 6px; max-height: 160px; overflow-y: auto; list-style: none; margin: 0; padding: 0; }
 .class-list li { padding: 3px 8px; border: 1px solid var(--line); background: var(--surface); font-size: .78rem; overflow-wrap: anywhere; }
 .import-file-name { overflow-wrap: anywhere; }
+.school-logo-upload { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 14px; }
+.school-logo-upload .school-logo { width: 80px; height: 80px; flex-basis: 80px; }
+.school-logo-controls { flex: 1 1 220px; min-width: 0; }
+.school-logo-controls p { margin: 8px 0 0; }
+.school-logo-controls .form-error { max-width: none; }
 
 .page-loading { display: grid; gap: 20px; }
 .loading-heading { display: flex; align-items: center; gap: 14px; min-height: 64px; }

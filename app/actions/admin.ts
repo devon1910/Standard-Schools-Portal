@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { timingSafeEqual } from "node:crypto";
 import { redirect } from "next/navigation";
 import { StudentStatus } from "@prisma/client";
 import { hash } from "@node-rs/argon2";
@@ -385,10 +386,51 @@ export async function updateSchoolSettings(formData: FormData) {
     address: z.string().trim().max(500).optional(),
     phone: z.string().trim().max(150).optional(),
     principalName: z.string().trim().max(150).optional(),
-    logoUrl: z.string().trim().url().optional().or(z.literal("")),
   }).parse(Object.fromEntries(formData));
-  await db.school.update({ where: { id: user.schoolId }, data: { ...data, motto: data.motto || null, address: data.address || null, phone: data.phone || null, principalName: data.principalName || null, logoUrl: data.logoUrl || null } });
+  await db.school.update({ where: { id: user.schoolId }, data: { ...data, motto: data.motto || null, address: data.address || null, phone: data.phone || null, principalName: data.principalName || null } });
   revalidatePath("/(portal)", "layout");
+}
+
+const schoolLogoSchema = z.object({
+  publicId: z.string().min(1).max(500),
+  version: z.number().int().positive(),
+  format: z.enum(["jpg", "jpeg", "png", "webp"]),
+  signature: z.string().regex(/^[a-f0-9]{40,64}$/),
+});
+
+export async function saveSchoolLogo(input: z.infer<typeof schoolLogoSchema>) {
+  const user = await requireOwner();
+  const data = schoolLogoSchema.parse(input);
+  const prefix = `standard-schools/${user.schoolId}/logos/`;
+  if (!data.publicId.startsWith(prefix) || !/^[a-zA-Z0-9_-]+$/.test(data.publicId.slice(prefix.length))) {
+    throw new Error("Invalid logo upload. Please choose the file again.");
+  }
+  const secret = process.env.CLOUDINARY_API_SECRET;
+  if (!secret || !process.env.CLOUDINARY_CLOUD_NAME) throw new Error("Logo uploads are unavailable. Please try again later.");
+  const expected = cloudinary.utils.api_sign_request({ public_id: data.publicId, version: data.version }, secret);
+  if (expected.length !== data.signature.length || !timingSafeEqual(Buffer.from(expected), Buffer.from(data.signature))) {
+    throw new Error("The logo upload could not be verified. Please choose the file again.");
+  }
+  const school = await db.school.findUnique({ where: { id: user.schoolId }, select: { logoPublicId: true } });
+  if (!school) throw new Error("School not found.");
+  // Derive the delivery URL from the verified asset ID, version, and format.
+  const logoUrl = cloudinary.url(data.publicId, { secure: true, version: data.version, resource_type: "image", type: "upload", format: data.format });
+  await db.school.update({ where: { id: user.schoolId }, data: { logoUrl, logoPublicId: data.publicId } });
+  revalidatePath("/(portal)", "layout");
+  if (school.logoPublicId?.startsWith(prefix) && school.logoPublicId !== data.publicId) {
+    await cloudinary.uploader.destroy(school.logoPublicId, { invalidate: true }).catch(() => undefined);
+  }
+}
+
+export async function removeSchoolLogo() {
+  const user = await requireOwner();
+  const school = await db.school.findUnique({ where: { id: user.schoolId }, select: { logoPublicId: true } });
+  if (!school) throw new Error("School not found.");
+  await db.school.update({ where: { id: user.schoolId }, data: { logoUrl: null, logoPublicId: null } });
+  revalidatePath("/(portal)", "layout");
+  if (school.logoPublicId?.startsWith(`standard-schools/${user.schoolId}/logos/`)) {
+    await cloudinary.uploader.destroy(school.logoPublicId, { invalidate: true }).catch(() => undefined);
+  }
 }
 
 export async function configureStudentIds(_: { error?: string }, formData: FormData): Promise<{ error?: string }> {
