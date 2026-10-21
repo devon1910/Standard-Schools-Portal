@@ -74,6 +74,8 @@ npm test
 npm run build
 ```
 
+Authenticated browser checks use a disposable local PostgreSQL database whose name ends in `_test`. Set `DATABASE_URL` to that database and run `npm run db:migrate`. Set `PORTAL_UI_TEST_DATABASE_URL` to the same connection string, then run `npm run test:e2e`. These checks create a test school and check logo changes, student imports, and page layouts at desktop, tablet, and phone widths. They are skipped when `PORTAL_UI_TEST_DATABASE_URL` is unset. Stop any development server on port 3000 before running them.
+
 Playwright smoke tests use `PLAYWRIGHT_BASE_URL` or default to `http://127.0.0.1:3000`.
 
 ## Permission summary

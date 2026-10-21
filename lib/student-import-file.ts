@@ -99,11 +99,12 @@ function escapeXml(value: string) {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export async function createWordTemplate(): Promise<ArrayBuffer> {
+export async function createWordTemplate(className = importExample[2]): Promise<ArrayBuffer> {
   const zip = new JSZip();
   const paragraph = (value: string) => `<w:p><w:r><w:t xml:space="preserve">${escapeXml(value)}</w:t></w:r></w:p>`;
   const tableGrid = `<w:tblGrid>${importColumns.map(() => '<w:gridCol w:w="1500"/>').join("")}</w:tblGrid>`;
-  const table = [importColumns, importColumns.map((_, index) => importExample[index] ?? "")].map((row) => `<w:tr>${row.map((value) => `<w:tc>${paragraph(value)}</w:tc>`).join("")}</w:tr>`).join("");
+  const example = importExample.map((value, index) => index === 2 ? className : value);
+  const table = [importColumns, importColumns.map((_, index) => example[index] ?? "")].map((row) => `<w:tr>${row.map((value) => `<w:tc>${paragraph(value)}</w:tc>`).join("")}</w:tr>`).join("");
   zip.file("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
   zip.file("_rels/.rels", '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
   zip.file("word/document.xml", `<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${paragraph("Student import")}${paragraph("Required: First Name, Last Name, Class, Gender, Date of Birth (YYYY-MM-DD). All other fields are optional. Class must match a class in the selected session. Replace the example row. Keep the column headings. Save as .docx.")}<w:tbl><w:tblPr><w:tblBorders>${["top", "left", "bottom", "right", "insideH", "insideV"].map((side) => `<w:${side} w:val="single" w:sz="4" w:color="999999"/>`).join("")}</w:tblBorders></w:tblPr>${tableGrid}${table}</w:tbl><w:sectPr><w:pgSz w:w="23811" w:h="16838" w:orient="landscape"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr></w:body></w:document>`);

@@ -1,0 +1,125 @@
+import { expect, test } from "@playwright/test";
+import { randomUUID } from "node:crypto";
+import { hash } from "@node-rs/argon2";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+
+// Authenticated checks use only an explicitly selected disposable local database.
+const connectionString = process.env.PORTAL_UI_TEST_DATABASE_URL;
+test.skip(!connectionString, "Set PORTAL_UI_TEST_DATABASE_URL for authenticated layout checks.");
+const password = "Layout-check-password-42";
+const username = `layout.${randomUUID().slice(0, 8)}`;
+const logoUrl = "https://school-logos.example.test/crest.svg";
+let db: PrismaClient;
+let schoolId: number;
+let emptySessionId: number;
+
+test.beforeAll(async ({ baseURL }) => {
+  const target = new URL(connectionString!);
+  if (!target.pathname.endsWith("_test") || !["localhost", "127.0.0.1"].includes(target.hostname)
+    || !baseURL || !["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname)) {
+    throw new Error("Layout checks require a local app and a disposable local database ending in _test.");
+  }
+  db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+  schoolId = 900_000 + Math.floor(Math.random() * 100_000);
+  await db.school.create({ data: { id: schoolId, name: "Standard International School", shortName: username, logoUrl, studentIdPrefix: "UI", studentIdDigits: 3 } });
+  await db.portalUser.create({ data: { username, displayName: "Layout Owner", schoolId, role: "OWNER", passwordHash: await hash(password), mustChangePassword: false } });
+  const empty = await db.legacySession.create({ data: { schoolId, name: "2024/2025", dateCreated: new Date() } });
+  emptySessionId = empty.id;
+  const session = await db.legacySession.create({ data: { schoolId, name: "2025/2026", dateCreated: new Date() } });
+  const category = await db.legacyClassType.create({ data: { schoolId, name: "Secondary", dateCreated: new Date() } });
+  await db.legacyTerm.create({ data: { schoolId, name: "First term" } });
+  await db.legacyClass.createMany({ data: Array.from({ length: 42 }, (_, index) => ({ schoolId, sessionId: session.id, classTypeId: category.id, name: `JSS ${Math.floor(index / 3) + 1}${"ABC"[index % 3]}`, dateCreated: new Date() })) });
+});
+
+test.afterAll(async () => {
+  if (!db) return;
+  try {
+    await db.portalUser.deleteMany({ where: { schoolId } });
+    await db.legacyClass.deleteMany({ where: { schoolId } });
+    await db.legacyClassType.deleteMany({ where: { schoolId } });
+    await db.legacyTerm.deleteMany({ where: { schoolId } });
+    await db.legacySession.deleteMany({ where: { schoolId } });
+    await db.school.delete({ where: { id: schoolId } });
+  } finally {
+    await db.$disconnect();
+  }
+});
+
+test.beforeEach(async ({ page }) => {
+  await page.route("https://school-logos.example.test/**", (route) => route.fulfill({
+    contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#19724b"/><text x="40" y="48" text-anchor="middle" font-size="24" fill="white">SIS</text></svg>',
+  }));
+  await page.goto("/login");
+  await page.getByLabel("Username").fill(username);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard$/, { timeout: 20_000 });
+});
+
+test("saved school logos refresh the shared header and broken images have a fallback", async ({ page }) => {
+  const image = page.locator(".topbar .school-logo");
+  await expect(image).toHaveAttribute("src", logoUrl);
+  await expect(image).toHaveJSProperty("naturalWidth", 80);
+  await page.goto("/settings");
+  const updatedLogo = "https://school-logos.example.test/updated.svg";
+  await page.locator('input[name="logoUrl"]').fill(updatedLogo);
+  await page.getByRole("button", { name: "Save school settings", exact: true }).click();
+  await expect(image).toHaveAttribute("src", updatedLogo);
+  await page.locator('.sidebar a[href="/dashboard"]').click();
+  await expect(image).toHaveAttribute("src", updatedLogo);
+  await page.goto("/settings");
+  await page.locator('input[name="logoUrl"]').fill("");
+  await page.getByRole("button", { name: "Save school settings", exact: true }).click();
+  await expect(image).toHaveAttribute("src", "/brand/mark-mono-black.svg");
+  await page.route("https://school-logos.example.test/broken.svg", (route) => route.fulfill({ status: 404, body: "Missing" }));
+  await page.locator('input[name="logoUrl"]').fill("https://school-logos.example.test/broken.svg");
+  await page.getByRole("button", { name: "Save school settings", exact: true }).click();
+  await expect(image).toHaveAttribute("src", "/brand/mark-mono-black.svg");
+});
+
+test("import panels keep the heading above the form and contain long class lists", async ({ page }, testInfo) => {
+  await page.goto("/students");
+  await page.getByText("Import students", { exact: true }).click();
+  const heading = await page.getByRole("heading", { name: "Students", exact: true }).boundingBox();
+  const panel = await page.locator("details.panel[open]").boundingBox();
+  expect(heading!.y + heading!.height).toBeLessThan(panel!.y);
+  await expect(page.getByRole("group", { name: "Available classes (42)" }).getByRole("listitem")).toHaveCount(42);
+  expect((await page.locator("#import-session").boundingBox())!.height).toBeLessThan(60);
+  expect((await page.locator(".class-list").boundingBox())!.height).toBeLessThanOrEqual(160);
+  await page.screenshot({ path: testInfo.outputPath("students-desktop.png"), fullPage: true });
+  await page.locator('input[type="file"]').setInputFiles({ name: "students.csv", mimeType: "text/csv", buffer: Buffer.from("First Name,Last Name,Class,Gender,Date of Birth\nAda,Okafor,Unknown class,Female,2014-05-12") });
+  await expect(page.locator(".student-import").getByRole("alert")).toContainText("Unknown class");
+  await expect(page.getByRole("button", { name: "Import 1 student", exact: true })).toBeDisabled();
+  await page.locator("#import-session").selectOption(String(emptySessionId));
+  await expect(page.getByRole("group", { name: "Available classes (0)" })).toContainText("Create classes");
+  await expect(page.getByRole("button", { name: "Download Word template" })).toBeDisabled();
+});
+
+test("portal pages and open forms fit desktop, tablet, and phone screens", async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
+  for (const width of [1440, 1024, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 960 });
+    for (const path of ["/dashboard", "/students", "/academics", "/questions", "/results", "/reports", "/promotion", "/settings", "/settings/password-audit"]) {
+      await page.goto(path);
+      await expect(page.locator(".main-content")).toBeVisible();
+      // Open forms to catch overflow hidden by their collapsed state.
+      for (const panel of await page.locator("main details.panel").all()) {
+        if (await panel.getAttribute("open") === null) await panel.locator("summary").click();
+        await expect(panel).toHaveAttribute("open", "");
+      }
+      const dimensions = await page.evaluate(() => ({ width: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }));
+      expect(dimensions.content, `${path} at ${width}px`).toBeLessThanOrEqual(dimensions.width + 1);
+      for (const empty of await page.locator(".table .empty-state").all()) {
+        const bounds = (await empty.boundingBox())!;
+        expect(bounds.x + bounds.width, `Empty state on ${path} at ${width}px`).toBeLessThanOrEqual(width);
+      }
+      if (width === 390 && path === "/students") {
+        await page.evaluate(() => window.scrollTo(0, 0));
+        await page.screenshot({ path: testInfo.outputPath("students-mobile.png"), fullPage: true });
+      }
+    }
+  }
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await expect(page).toHaveURL(/\/login$/);
+});

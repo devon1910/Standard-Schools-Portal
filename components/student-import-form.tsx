@@ -43,6 +43,9 @@ export default function StudentImportForm({ sessions, classes, defaultSessionId 
   const [result, setResult] = useState<StudentImportResult>();
   const [pending, startTransition] = useTransition();
   const [reading, setReading] = useState(false);
+  const availableNames = new Set(visibleClasses.map((item) => item.name.trim().toLowerCase()));
+  const unmatchedClasses = [...new Set(rows.filter((row) => !availableNames.has(row.className.trim().toLowerCase())).map((row) => row.className))];
+  const exampleClass = visibleClasses[0]?.name ?? importExample[2];
 
   function changeSession(value: number) {
     setSessionId(value);
@@ -53,7 +56,7 @@ export default function StudentImportForm({ sessions, classes, defaultSessionId 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Students");
     worksheet.addRow([...columns]);
-    worksheet.addRow(importExample);
+    worksheet.addRow(importExample.map((value, index) => index === 2 ? exampleClass : value));
     worksheet.columns.forEach((column, index) => { column.width = Math.max(columns[index].length + 3, 18); });
     worksheet.getRow(1).font = { bold: true };
     const buffer = await workbook.xlsx.writeBuffer();
@@ -115,34 +118,35 @@ export default function StudentImportForm({ sessions, classes, defaultSessionId 
   }
 
   return (
-    <div style={{ width: "min(900px, 84vw)" }}>
+    <div className="student-import">
       <div className="notice" style={{ marginBottom: 16 }}>
         Use Word (.docx), Excel (.xlsx), or CSV. Keep the headings and enter one student per row. First name, last name, class, gender, and date of birth are required. All other fields are optional. The system generates student IDs from school Settings. Use YYYY-MM-DD for dates. Class must match a class in the selected session. Save older Word .doc files as .docx first.
       </div>
       <div className="form-grid">
         <div className="field">
-          <label>Session</label>
-          <select className="select" value={sessionId} disabled={pending} onChange={(event) => changeSession(Number(event.target.value))}>
+          <label htmlFor="import-session">Session</label>
+          <select id="import-session" className="select" value={sessionId} disabled={pending} onChange={(event) => changeSession(Number(event.target.value))}>
             {sessions.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
         </div>
-        <div className="field">
-          <label>Available classes</label>
-          <p className="small muted">{visibleClasses.map((item) => item.name).join(", ") || "Create classes in this session before importing."}</p>
+        <div className="field" role="group" aria-labelledby="import-classes-label">
+          <span className="field-label" id="import-classes-label">Available classes ({visibleClasses.length})</span>
+          {visibleClasses.length ? <ul className="class-list">{visibleClasses.map((item) => <li key={item.id}>{item.name}</li>)}</ul> : <p className="small muted">Create classes in this session before importing.</p>}
         </div>
       </div>
       <div className="header-actions" style={{ marginTop: 16, flexWrap: "wrap" }}>
-        <button className="button button-secondary" type="button" onClick={() => void downloadTemplate()}><Download size={15} /> Download Excel template</button>
-        <button className="button button-secondary" type="button" onClick={async () => download(new Blob([await createWordTemplate()], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }), "student-import-template.docx")}><Download size={15} /> Download Word template</button>
+        <button className="button button-secondary" type="button" disabled={pending || !visibleClasses.length} onClick={() => void downloadTemplate()}><Download size={15} /> Download Excel template</button>
+        <button className="button button-secondary" type="button" disabled={pending || !visibleClasses.length} onClick={async () => download(new Blob([await createWordTemplate(exampleClass)], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" }), "student-import-template.docx")}><Download size={15} /> Download Word template</button>
         <label className="button button-secondary" style={{ cursor: "pointer" }}>
           <Upload size={15} /> Choose file
           <input type="file" accept=".docx,.xlsx,.csv" disabled={pending} hidden onChange={(event) => void readFile(event.target.files?.[0])} />
         </label>
-        {fileName && <span className="small muted"><FileSpreadsheet size={14} style={{ verticalAlign: "middle" }} /> {fileName}</span>}
+        {fileName && <span className="small muted import-file-name"><FileSpreadsheet size={14} style={{ verticalAlign: "middle" }} /> {fileName}</span>}
       </div>
       {reading && <p className="small muted" role="status">Reading file...</p>}
 
       {!!parseErrors.length && <div className="notice error" style={{ marginTop: 16 }}>{parseErrors.slice(0, 8).map((error) => <div key={error}>{error}</div>)}</div>}
+      {!!unmatchedClasses.length && !parseErrors.length && !result?.success && <div className="notice warning" role="alert" style={{ marginTop: 16 }}>These classes are not in the selected session: <strong>{unmatchedClasses.join(", ")}</strong>. Use the class names shown above or choose a different session.</div>}
       {result && <div className={`notice ${result.success ? "success" : "error"}`} style={{ marginTop: 16 }}>
         {result.success ? `${result.imported} student${result.imported === 1 ? "" : "s"} imported successfully.` : (
           <><strong>Nothing was imported. Correct these rows and upload again:</strong>{result.errors.slice(0, 12).map((error) => <div key={`${error.rowNumber}-${error.message}`}>{error.rowNumber ? `Row ${error.rowNumber}: ` : ""}{error.message}</div>)}</>
@@ -159,7 +163,7 @@ export default function StudentImportForm({ sessions, classes, defaultSessionId 
           </div>
           {rows.length > 100 && <p className="small muted">Showing the first 100 of {rows.length} valid records.</p>}
           <div className="form-actions">
-            <button className="button button-primary" type="button" disabled={pending || reading || !visibleClasses.length} onClick={confirmImport}>
+            <button className="button button-primary" type="button" disabled={pending || reading || !visibleClasses.length || !!unmatchedClasses.length} onClick={confirmImport}>
               {pending ? "Importing students..." : `Import ${rows.length} student${rows.length === 1 ? "" : "s"}`}
             </button>
           </div>

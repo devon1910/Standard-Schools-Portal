@@ -54,6 +54,12 @@ describe("student import validation", () => {
     expect(parsed.rows[0].parentName).toBe("");
   });
 
+  it("uses the selected session's class in the Word example and escapes its name", async () => {
+    const parsed = parseStudentGrid(await readWordTable(await createWordTemplate("JSS 1A & B")));
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.rows[0].className).toBe("JSS 1A & B");
+  });
+
   it("reports source row numbers and validates missing headings", () => {
     const grid = [importColumns, [], ["Ada", "Okafor", "JSS 1", "Female", "2014-02-31"]];
     expect(parseStudentGrid(grid).errors[0]).toMatch(/^Row 3:/);

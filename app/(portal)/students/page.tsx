@@ -84,19 +84,19 @@ export default async function StudentsPage({ searchParams }: { searchParams: Stu
           <h2>Students</h2>
           <p>One permanent profile per student, with a clear enrollment history for each academic session.</p>
         </div>
-        <div className="header-actions">
-          <details className="panel">
-            <summary><Upload size={15} style={{ display: "inline", marginRight: 7 }} />Import students</summary>
-            <div className="panel-body"><StudentImportForm sessions={sessions} classes={allClasses} defaultSessionId={sessionId} /></div>
-          </details>
-          <details className="panel">
-            <summary><Plus size={15} style={{ display: "inline", marginRight: 7 }} />Add student</summary>
-            <div className="panel-body" style={{ width: "min(680px, 80vw)" }}>
-              <StudentCreateForm sessions={sessions} classes={allClasses} defaultSessionId={sessionId} />
-            </div>
-          </details>
-        </div>
       </header>
+      <section className="page-panels" aria-label="Student actions">
+        <details className="panel">
+          <summary><Upload size={15} style={{ display: "inline", marginRight: 7 }} />Import students</summary>
+          <div className="panel-body"><StudentImportForm sessions={sessions} classes={allClasses} defaultSessionId={sessionId} /></div>
+        </details>
+        <details className="panel">
+          <summary><Plus size={15} style={{ display: "inline", marginRight: 7 }} />Add student</summary>
+          <div className="panel-body">
+            <StudentCreateForm sessions={sessions} classes={allClasses} defaultSessionId={sessionId} />
+          </div>
+        </details>
+      </section>
 
       {params.error && <div className="notice error">{errorMap[params.error] ?? "The student could not be saved."}</div>}
       {!school?.studentIdPrefix && <div className="notice warning">The school owner must set the permanent student ID format in <Link href="/settings">Settings</Link> before students can be added or imported.</div>}

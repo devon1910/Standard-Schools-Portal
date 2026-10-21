@@ -10,11 +10,12 @@ export default defineConfig({
   webServer: process.env.PLAYWRIGHT_BASE_URL ? undefined : {
     command: "node node_modules/next/dist/bin/next dev",
     url: "http://127.0.0.1:3000/login",
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.PORTAL_UI_TEST_DATABASE_URL,
     timeout: 120_000,
     env: {
       NEXTAUTH_URL: "http://127.0.0.1:3000",
       NEXTAUTH_SECRET: "playwright-only-secret",
+      ...(process.env.PORTAL_UI_TEST_DATABASE_URL ? { DATABASE_URL: process.env.PORTAL_UI_TEST_DATABASE_URL } : {}),
     },
   },
 });
