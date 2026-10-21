@@ -41,6 +41,7 @@ async function main() {
     const sql = await readFile(path.join(migrationsRoot, migrationName, "migration.sql"), "utf8");
     const checksum = createHash("sha256").update(sql).digest("hex");
     const id = randomUUID();
+    console.log(`Applying: ${migrationName}`);
     const client = await pool.connect();
     try {
       await client.query("BEGIN");
@@ -57,6 +58,7 @@ async function main() {
       console.log(`Applied: ${migrationName}`);
     } catch (error) {
       await client.query("ROLLBACK");
+      console.error(`Migration failed and was rolled back: ${migrationName}`);
       throw error;
     } finally {
       client.release();

@@ -34,7 +34,7 @@ To request a workspace directly, email [davidsonekpokpobe@gmail.com](mailto:davi
    npm run db:generate
    ```
 
-4. For an existing database, follow [prisma/migrations/README.md](prisma/migrations/README.md). Never run a reset against production.
+4. Run `npm run db:migrate` for an empty database. For an existing database, follow [prisma/migrations/README.md](prisma/migrations/README.md). Never run a reset against production.
 5. Seed the development schools and temporary accounts after setting the four `SEED_*_PASSWORD` variables:
 
    ```powershell

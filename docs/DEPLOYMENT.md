@@ -4,7 +4,7 @@ GitHub Actions runs the production release from [`.github/workflows/production.y
 
 The workflow runs after a push to `main`. You can also select **Actions → Production migrations and deployment → Run workflow** on `main`.
 
-It installs the locked dependencies, runs lint, checks types, and runs the tests. It then runs `npm run db:migrate`. Deployment to Vercel starts only if all earlier steps pass. Vercel builds the application with its existing production environment settings.
+It installs the locked dependencies, runs lint, checks types, and runs the tests. It also checks the full migration sequence on a disposable PostgreSQL 17 service. It then runs `npm run db:migrate` against production. Deployment to Vercel starts only if all earlier steps pass. Vercel builds the application with its existing production environment settings.
 
 Only one production release can run at a time. A new push does not cancel a running migration. The workflow rejects a commit that is already behind `main` before it changes the database.
 
@@ -38,6 +38,16 @@ The workflow uses the existing migration runner in `prisma/deploy.ts`. It reads 
 If a migration fails, the runner rolls back that migration and exits with an error. GitHub does not start the Vercel deployment. Earlier completed migrations remain recorded. Correct the cause and rerun the workflow. Do not edit SQL files that have already been applied; add a new migration for the next change.
 
 This workflow does not reset the database, run the legacy backfill, or seed accounts. A database that still needs the initial legacy cutover must first follow [the migration guide](../prisma/migrations/README.md).
+
+For an empty database, the `20260823_create_legacy_tables` prerequisite creates the base tables before the rewrite migration changes them. For an existing database, it preserves the legacy tables and rows. It rejects partial or unrelated schemas and points to the connection or schema setting that needs attention.
+
+If a run failed with `relation "Classes" does not exist`, push this fix and run the workflow for the latest `main` commit. The failed rewrite was rolled back and can be retried. If the connection is meant to use existing school records, first confirm that GitHub's `DATABASE_URL` matches Vercel's database.
+
+## Local migration checks
+
+Create a disposable PostgreSQL database whose name ends in `_test`. Set `MIGRATION_TEST_DATABASE_URL` to its connection string, then run `npm run test:migrations`. The checks create temporary schemas and remove them when finished. They never fall back to the production `DATABASE_URL`.
+
+These checks reproduce the original missing-table failure, then test a clean deployment, repeat deployment, legacy data preservation, and an already upgraded database. They also test partial, unrelated, and incorrectly selected schemas. GitHub runs the same checks before production migrations.
 
 For the new student ID and family portal code, the pending updates are `20261021_student_ids` and `20261022_family_portal`. The workflow applies them if the database history does not already mark them complete.
 

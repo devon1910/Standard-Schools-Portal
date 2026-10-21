@@ -19,6 +19,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: portal_test
+          POSTGRES_PASSWORD: portal_test
+          POSTGRES_DB: portal_migration_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U portal_test -d portal_migration_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Check out code
         uses: actions/checkout@v6
@@ -58,6 +72,11 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Test migrations on a disposable database
+        env:
+          MIGRATION_TEST_DATABASE_URL: postgresql://portal_test:portal_test@127.0.0.1:5432/portal_migration_test
+        run: npm run test:migrations
 
       - name: Reject an outdated release
         env:

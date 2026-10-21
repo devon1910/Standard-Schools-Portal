@@ -15,6 +15,11 @@ type LegacyUser = {
 };
 
 async function migrateLegacyUser(username: string, password: string) {
+  const [identityTable] = await db.$queryRaw<{ exists: boolean }[]>`
+    SELECT to_regclass('"AspNetUsers"') IS NOT NULL AS "exists"
+  `;
+  if (!identityTable?.exists) return null;
+
   const legacyUsers = await db.$queryRaw<LegacyUser[]>`
     SELECT "Id", "UserName", "PasswordHash"
     FROM "AspNetUsers"

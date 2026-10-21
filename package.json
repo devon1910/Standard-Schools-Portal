@@ -12,6 +12,7 @@
     "test": "vitest run tests",
     "test:watch": "vitest tests",
     "test:e2e": "playwright test",
+    "test:migrations": "node --import tsx tests/migration-deploy.integration.ts",
     "db:generate": "prisma generate",
     "db:migrate": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs prisma/deploy.ts",
     "db:backfill": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs prisma/backfill.ts",

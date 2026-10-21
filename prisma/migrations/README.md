@@ -1,4 +1,12 @@
-# Existing database migration
+# Database migrations
+
+## New database
+
+Run `npm run db:migrate` against an empty PostgreSQL database. The `20260823_create_legacy_tables` prerequisite creates the seven tables whose names the application retains from the former .NET service. It runs before the rewrite migration adds `archivedAt` and foreign keys to those tables. The original baseline marker and previously applied SQL files stay unchanged.
+
+After migration, use `npm run db:seed` with the documented `SEED_*_PASSWORD` values to create the first owner and staff accounts. Migrations do not create login credentials.
+
+## Existing database
 
 This application adopts the populated PostgreSQL database created by the retired .NET API.
 
@@ -9,6 +17,16 @@ This application adopts the populated PostgreSQL database created by the retired
 5. Run `prisma/backfill.ts`, review conflicts, then repeat during the production maintenance window.
 
 The migration is additive. The legacy `Students` and ASP.NET Identity tables are not removed.
+
+When all seven legacy tables already exist, `20260823_create_legacy_tables` leaves them and their rows unchanged. This also applies to databases where the rewrite and later migrations have already completed.
+
+## Missing table errors
+
+An error such as `relation "Classes" does not exist` means the upgrade migration could not find a table previously assumed to exist. The prerequisite now supports empty databases. The runner rolls back a failed migration, so push the fix and rerun the production workflow on the latest `main` commit. Do not reset the database or mark the failed rewrite as applied.
+
+If only some legacy tables exist, if unrelated tables occupy the target schema, or if the school tables exist in another schema, the prerequisite stops with a configuration error. Check that GitHub's `DATABASE_URL` points to the same database as Vercel and that PostgreSQL `search_path` selects the schema containing the school tables. Restore missing legacy tables when necessary. The prerequisite does not create empty replacements beside partial school data.
+
+## Later updates
 
 `20261021_student_ids` adds the school ID format and the generated student ID field. It leaves all existing student identifiers unchanged. After deployment, each school owner must set the ID format in Settings before staff add or import students. The database locks the format after the first save. New IDs are allocated under a school row lock in the same transaction as student creation.
 
