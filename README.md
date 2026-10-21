@@ -60,9 +60,9 @@ The migration never drops the legacy `Students` or ASP.NET Identity tables. Roll
 
 ## Ongoing production releases
 
-GitHub Actions checks changes pushed to `main`, applies pending database migrations, then deploys to Vercel. A failed migration stops the release. Production releases run one at a time. Vercel's automatic Git deployment for `main` is disabled so it cannot deploy ahead of the migrations.
+GitHub Actions checks changes pushed to `main` and starts the production deployment on Vercel. The Vercel production build applies pending migrations with the same `DATABASE_URL` as the running application before it builds the code. A failed migration stops the release. Production releases run one at a time. Vercel's automatic Git deployment for `main` is disabled so it cannot deploy ahead of the pipeline.
 
-Configure the `production` GitHub environment with `DATABASE_URL`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` before pushing this workflow. See [deployment setup](docs/DEPLOYMENT.md) for the steps and manual reruns.
+Configure the `production` GitHub environment with `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` before pushing this workflow. Keep the production `DATABASE_URL` in Vercel. See [deployment setup](docs/DEPLOYMENT.md) for the steps and manual reruns.
 
 ## Quality checks
 

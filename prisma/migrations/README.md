@@ -32,4 +32,4 @@ If only some legacy tables exist, if unrelated tables occupy the target schema, 
 
 `20261022_family_portal` adds the student account role, its profile link, and a session version for credential revocation. It creates no accounts and changes no existing credentials. Student accounts are deleted with their student profile. Deploy both migrations with `npm run db:migrate` before deploying the new application. See [Report portal setup](../../docs/FAMILY_PORTAL.md).
 
-Production releases now run `npm run db:migrate` through GitHub Actions before deploying to Vercel. Configure the production secrets with [the deployment guide](../../docs/DEPLOYMENT.md). The workflow skips completed migrations and stops deployment if a pending migration fails.
+GitHub Actions starts each production release. Vercel then runs `npm run db:migrate` with its production `DATABASE_URL` before building the application. Configure the production secrets with [the deployment guide](../../docs/DEPLOYMENT.md). Completed migrations are skipped. A failed migration stops the release.
