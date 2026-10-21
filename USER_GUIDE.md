@@ -100,6 +100,29 @@ Owners can select **Fees** beside a student, enter the **Outstanding balance**, 
 
 Owners can open a student's profile and select **Archive student**. Archiving keeps the student's history.
 
+## Report access
+
+### Give a student or guardian report access (owner)
+
+1. Open **Students**, then **View** beside the student.
+2. Find **Student and guardian report access**.
+3. Select **Create student login**.
+4. Copy the username, temporary password, and report portal link. Give them to the student or guardian through a private channel.
+
+The temporary password appears only after creation or reset. Select **Reset password and enable access** to issue a new password. Select **Disable access** to stop access. A reset or disable ends current sessions. Archived students cannot sign in.
+
+### Open a report card (student or guardian)
+
+1. Open the report portal link from the school. The link ends in `/family/login` on the current deployment.
+2. Enter the username and temporary password from the school.
+3. Set a new password when prompted. Sign in again with the new password.
+4. Select **Open report** beside a published report card.
+5. Select **Print** to print it or save it as a PDF.
+
+Only published reports for the linked student appear. Ask the school for help if no report is available or a password is forgotten. A guardian uses the account for each child separately.
+
+Owners publish reports from **Report cards**. **Withdraw class reports** hides them from the report portal. Changes to scores, report details, class subjects, or term report settings return affected reports to draft status. Publish them again after review.
+
 ## Promotion
 
 Use **Promotion** when starting a new academic session from an existing one.

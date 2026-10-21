@@ -3,12 +3,12 @@
 import { hash, verify } from "@node-rs/argon2";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
+import { requireAccount } from "@/lib/auth";
 
 export type PasswordState = { error?: string; success?: boolean };
 
 export async function changePassword(_: PasswordState, formData: FormData): Promise<PasswordState> {
-  const user = await requireUser();
+  const user = await requireAccount();
   const parsed = z
     .object({
       currentPassword: z.string().min(1),
@@ -27,9 +27,10 @@ export async function changePassword(_: PasswordState, formData: FormData): Prom
     return { error: "Current password is incorrect." };
   }
 
-  await db.portalUser.update({
-    where: { id: account.id },
-    data: { passwordHash: await hash(parsed.data.newPassword), mustChangePassword: false },
+  const updated = await db.portalUser.updateMany({
+    where: { id: account.id, schoolId: user.schoolId, isActive: true, sessionVersion: user.sessionVersion, passwordHash: account.passwordHash },
+    data: { passwordHash: await hash(parsed.data.newPassword), mustChangePassword: false, sessionVersion: { increment: 1 } },
   });
+  if (!updated.count) return { error: "This account changed. Sign in again or ask your school for help." };
   return { success: true };
 }

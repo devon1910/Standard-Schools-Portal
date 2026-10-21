@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { verifyAspNetIdentityPassword } from "@/lib/legacy-password";
+import { safeAuthRedirect } from "@/lib/family-portal";
 
 type LegacyUser = {
   Id: string;
@@ -38,7 +39,7 @@ async function migrateLegacyUser(username: string, password: string) {
       mustChangePassword: false,
       lastLoginAt: new Date(),
     },
-    include: { school: true },
+    include: { school: true, studentProfile: { select: { schoolId: true, status: true } } },
   });
 }
 
@@ -65,10 +66,11 @@ export const authOptions: NextAuthOptions = {
         const username = parsed.data.username.toLowerCase();
         let user = await db.portalUser.findUnique({
           where: { username },
-          include: { school: true },
+          include: { school: true, studentProfile: { select: { schoolId: true, status: true } } },
         });
         if (!user) user = await migrateLegacyUser(username, parsed.data.password);
         if (!user || !user.isActive) return null;
+        if (user.role === "STUDENT" && (!user.studentProfileId || user.studentProfile?.schoolId !== user.schoolId || user.studentProfile.status === "ARCHIVED")) return null;
 
         if (user.lockedUntil && user.lockedUntil > new Date()) return null;
         const passwordMatches = await verify(user.passwordHash, parsed.data.password);
@@ -97,11 +99,14 @@ export const authOptions: NextAuthOptions = {
           schoolName: user.school.name,
           role: user.role,
           mustChangePassword: user.mustChangePassword,
+          sessionVersion: user.sessionVersion,
+          studentProfileId: user.studentProfileId?.toString() ?? null,
         };
       },
     }),
   ],
   callbacks: {
+    redirect({ url, baseUrl }) { return safeAuthRedirect(url, baseUrl); },
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
@@ -110,6 +115,8 @@ export const authOptions: NextAuthOptions = {
         token.schoolName = user.schoolName;
         token.role = user.role;
         token.mustChangePassword = user.mustChangePassword;
+        token.sessionVersion = user.sessionVersion;
+        token.studentProfileId = user.studentProfileId;
       }
       return token;
     },
@@ -122,6 +129,8 @@ export const authOptions: NextAuthOptions = {
         schoolName: token.schoolName,
         role: token.role,
         mustChangePassword: token.mustChangePassword,
+        sessionVersion: token.sessionVersion ?? 0,
+        studentProfileId: token.studentProfileId ?? null,
       };
       return session;
     },
@@ -129,13 +138,40 @@ export const authOptions: NextAuthOptions = {
 };
 
 export async function getSession() {
-  return getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
+  if (!session?.user) return null;
+  const account = await db.portalUser.findFirst({
+    where: { id: session.user.id, schoolId: session.user.schoolId, isActive: true },
+    include: { school: true, studentProfile: { select: { schoolId: true, status: true } } },
+  });
+  if (!account || account.sessionVersion !== (session.user.sessionVersion ?? 0)) return null;
+  if (account.role === "STUDENT" && (!account.studentProfileId || account.studentProfile?.schoolId !== account.schoolId || account.studentProfile.status === "ARCHIVED")) return null;
+  return { ...session, user: {
+    id: account.id, name: account.displayName, username: account.username,
+    schoolId: account.schoolId, schoolName: account.school.name, role: account.role,
+    mustChangePassword: account.mustChangePassword, sessionVersion: account.sessionVersion,
+    studentProfileId: account.studentProfileId?.toString() ?? null,
+  } };
+}
+
+export async function requireAccount(loginPath = "/login") {
+  const session = await getSession();
+  if (!session?.user) redirect(loginPath);
+  return session.user;
 }
 
 export async function requireUser() {
-  const session = await getSession();
-  if (!session?.user) redirect("/login");
-  return session.user;
+  const user = await requireAccount();
+  if (user.role === "STUDENT") redirect("/family");
+  if (user.mustChangePassword) redirect("/change-password");
+  return user;
+}
+
+export async function requireFamilyUser() {
+  const user = await requireAccount("/family/login");
+  if (user.role !== "STUDENT" || !user.studentProfileId) redirect("/dashboard");
+  if (user.mustChangePassword) redirect("/family/change-password");
+  return { ...user, studentProfileId: user.studentProfileId };
 }
 
 export async function requireOwner() {

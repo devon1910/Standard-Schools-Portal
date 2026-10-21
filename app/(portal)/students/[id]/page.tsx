@@ -12,6 +12,8 @@ import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDate, money } from "@/lib/format";
 import { displayStudentId } from "@/lib/student-id";
+import { familyLoginUrl } from "@/lib/family-portal";
+import StudentLoginManager from "@/components/student-login-manager";
 
 function display(value: string | null | undefined) {
   return value?.trim() || "Not provided";
@@ -27,6 +29,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
     db.studentProfile.findFirst({
       where: { id: BigInt(id), schoolId: user.schoolId },
       include: {
+        portalAccount: { select: { username: true, isActive: true, mustChangePassword: true } },
         enrollments: {
           include: { class: true },
           orderBy: { sessionId: "desc" },
@@ -148,6 +151,7 @@ export default async function StudentPage({ params, searchParams }: { params: Pr
           </div>
         </article>
       </section>
+      {user.role === "OWNER" && <StudentLoginManager studentProfileId={id} account={student.portalAccount} loginUrl={familyLoginUrl()} archived={student.status === "ARCHIVED"} />}
       {user.role === "OWNER" && <section className="card card-pad" style={{ marginTop: 20 }}>
         <h3>Delete student record</h3>
         <p className="small muted">Archiving keeps the student’s history. Permanent deletion removes the profile and all related records.</p>

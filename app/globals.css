@@ -269,6 +269,13 @@ details.panel[open] > summary { border-bottom: 1px solid var(--line); }
   body { background: white; }
 }
 
+.family-shell { max-width: 1120px; margin: 0 auto; padding: 32px 20px; }
+.family-header { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; margin-bottom: 28px; }
+.family-header h1 { margin-top: 8px; }
+.family-header .logout-button { color: var(--ink); }
+.family-report-page { padding: 24px 12px; }
+.family-report-toolbar { max-width: 1000px; margin: 0 auto 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.family-report-scroll { overflow-x: auto; }
 .print-stack { display: grid; gap: 24px; }
 .report-card { width: 210mm; min-height: 297mm; margin: 0 auto; background: white; padding: 9mm 8mm; color: #111; font-family: Georgia, "Times New Roman", serif; font-size: 10px; position: relative; }
 .report-header { display: grid; grid-template-columns: 78px 1fr 78px; text-align: center; align-items: center; border-bottom: 1px solid #ccd2d8; padding-bottom: 8px; }
@@ -292,6 +299,8 @@ details.panel[open] > summary { border-bottom: 1px solid var(--line); }
   .print-stack { display: block; }
   .report-card { break-after: page; margin: 0; box-shadow: none; }
   .report-card:last-child { break-after: auto; }
+  .family-report-page { padding: 0; }
+  .family-report-scroll { overflow: visible; }
 }
 
 /* Standard Schools brand system */

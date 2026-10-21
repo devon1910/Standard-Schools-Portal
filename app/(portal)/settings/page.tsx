@@ -9,7 +9,7 @@ import { formatStudentId } from "@/lib/student-id";
 export default async function SettingsPage() {
   const user = await requireUser();
   if (user.role !== "OWNER") return <><header className="page-header"><div><h2>Settings</h2><p>School configuration and user management are available to owners.</p></div></header><div className="notice info">Ask your school owner to make configuration or account changes.</div></>;
-  const [school, users] = await Promise.all([db.school.findUnique({ where: { id: user.schoolId } }), db.portalUser.findMany({ where: { schoolId: user.schoolId }, orderBy: [{ role: "asc" }, { displayName: "asc" }] })]);
+  const [school, users] = await Promise.all([db.school.findUnique({ where: { id: user.schoolId } }), db.portalUser.findMany({ where: { schoolId: user.schoolId, role: { in: ["OWNER", "STAFF"] } }, orderBy: [{ role: "asc" }, { displayName: "asc" }] })]);
   if (!school) return <div className="notice error">School settings have not been seeded.</div>;
   const studentIds = <section className="card card-pad" style={{ marginBottom: 20 }}>
     <h3>Student IDs</h3>

@@ -9,7 +9,7 @@ export async function getClassReportData(schoolId: number, sessionId: number, te
     db.legacyClass.findFirst({ where: { id: classId, schoolId, sessionId } }),
     db.termSetup.findUnique({ where: { schoolId_sessionId_termId: { schoolId, sessionId, termId } } }),
     db.classSubject.findMany({ where: { schoolId, classId }, include: { subject: true }, orderBy: { subject: { name: "asc" } } }),
-    db.enrollment.findMany({ where: { schoolId, sessionId, classId, active: true }, include: { student: true, scores: { where: { termId } }, reports: { where: { termId } } }, orderBy: { student: { name: "asc" } } }),
+    db.enrollment.findMany({ where: { schoolId, sessionId, classId, OR: [{ active: true }, { reports: { some: { termId, status: "PUBLISHED" } } }] }, include: { student: true, scores: { where: { termId } }, reports: { where: { termId } } }, orderBy: { student: { name: "asc" } } }),
   ]);
   if (!school || !session || !term || !classInfo) return null;
 

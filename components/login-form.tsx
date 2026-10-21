@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { LogIn } from "lucide-react";
 
-export default function LoginForm() {
+export default function LoginForm({ destination = "/" }: { destination?: string }) {
   const router = useRouter();
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -15,16 +15,22 @@ export default function LoginForm() {
     setPending(true);
     setError("");
     const data = new FormData(event.currentTarget);
-    const result = await signIn("credentials", {
-      username: data.get("username"), password: data.get("password"), redirect: false,
-    });
-    if (!result?.ok) {
-      setError("The username or password is incorrect, or the account is temporarily locked.");
+    try {
+      const result = await signIn("credentials", {
+        username: data.get("username"), password: data.get("password"), redirect: false,
+        callbackUrl: new URL(destination, window.location.origin).href,
+      });
+      if (!result?.ok || result.error) {
+        setError("The username or password is incorrect, or the account is temporarily locked.");
+        setPending(false);
+        return;
+      }
+      router.push(destination);
+      router.refresh();
+    } catch {
+      setError("Sign-in failed. Check your connection and try again.");
       setPending(false);
-      return;
     }
-    router.push("/dashboard");
-    router.refresh();
   }
 
   return (

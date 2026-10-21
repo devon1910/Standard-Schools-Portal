@@ -21,6 +21,7 @@ To request a workspace directly, email [davidsonekpokpobe@gmail.com](mailto:davi
 - Class-wide subject configuration and spreadsheet-style 20/20/60 score sheets.
 - Attendance, behaviour ratings, teacher/principal remarks, result validation and publishing.
 - Individual or class-batch A4 report cards based on the supplied reference document.
+- Student and guardian report portal at `/family`, with owner-issued credentials, required password changes, account disable/reset, and access to only the linked student's published reports. An optional `FAMILY_PORTAL_URL` enables a dedicated subdomain on the same deployment. See [Report portal setup](docs/FAMILY_PORTAL.md).
 
 ## Local setup
 
@@ -72,5 +73,6 @@ Playwright smoke tests use `PLAYWRIGHT_BASE_URL` or default to `http://127.0.0.1
 
 - **Owner:** school settings, users, academic structure, promotion, fees, archival, score entry, report details and publishing.
 - **Staff:** students, question files, score entry, draft report details, previews and printing.
+- **Student or guardian:** the linked student's published report cards and their own password. One account is issued per student.
 
-Every query and Server Action independently checks the authenticated school. There is no public report lookup or compatibility REST API in this version.
+Every query and Server Action independently checks the authenticated school. Student accounts cannot use staff pages or actions. Password resets and account disabling invalidate current sessions. There is no public report lookup.

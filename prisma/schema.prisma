@@ -10,6 +10,7 @@ datasource db {
 enum UserRole {
   OWNER
   STAFF
+  STUDENT
 }
 
 enum StudentStatus {
@@ -56,6 +57,9 @@ model PortalUser {
   school              School    @relation(fields: [schoolId], references: [id])
   isActive            Boolean   @default(true)
   mustChangePassword  Boolean   @default(true)
+  sessionVersion      Int       @default(0)
+  studentProfileId    BigInt?   @unique
+  studentProfile      StudentProfile? @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
   lastLoginAt         DateTime?
@@ -204,6 +208,7 @@ model StudentProfile {
   photoPublicId    String?
   status           StudentStatus @default(ACTIVE)
   enrollments      Enrollment[]
+  portalAccount    PortalUser?
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
   archivedAt       DateTime?

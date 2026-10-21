@@ -17,6 +17,7 @@ export async function configureClassSubjects(classId: number, subjectIds: number
   await db.$transaction([
     db.classSubject.deleteMany({ where: { classId, schoolId: user.schoolId } }),
     db.classSubject.createMany({ data: valid.map(({ id }) => ({ schoolId: user.schoolId, classId, subjectId: id })) }),
+    db.termReport.updateMany({ where: { schoolId: user.schoolId, enrollment: { classId } }, data: { status: "DRAFT", publishedAt: null, publishedBy: null } }),
   ]);
   revalidatePath("/results");
   return { success: true };
@@ -45,11 +46,11 @@ export async function saveScoreSheet(input: z.infer<typeof scoreSheetSchema>) {
   const enrollmentIds = data.scores.map((item) => BigInt(item.enrollmentId));
   const validCount = await db.enrollment.count({ where: { id: { in: enrollmentIds }, schoolId: user.schoolId, classId: data.classId, active: true } });
   if (validCount !== enrollmentIds.length) throw new Error("The score sheet contains an invalid student.");
-  await db.$transaction(data.scores.map((score) => db.resultScore.upsert({
+  await db.$transaction([...data.scores.map((score) => db.resultScore.upsert({
     where: { enrollmentId_termId_subjectId: { enrollmentId: BigInt(score.enrollmentId), termId: data.termId, subjectId: data.subjectId } },
     update: { firstTest: score.firstTest, secondTest: score.secondTest, exam: score.exam },
     create: { schoolId: user.schoolId, enrollmentId: BigInt(score.enrollmentId), termId: data.termId, subjectId: data.subjectId, firstTest: score.firstTest, secondTest: score.secondTest, exam: score.exam },
-  })));
+  })), db.termReport.updateMany({ where: { schoolId: user.schoolId, termId: data.termId, enrollment: { classId: data.classId } }, data: { status: "DRAFT", publishedAt: null, publishedBy: null } })]);
   revalidatePath("/results");
   return { success: true };
 }
@@ -80,6 +81,9 @@ export async function saveTermReport(formData: FormData) {
   const setup = await db.termSetup.findUnique({ where: { schoolId_sessionId_termId: { schoolId: user.schoolId, sessionId: enrollment.sessionId, termId: parsed.termId } } });
   if (setup && parsed.timesPresent > setup.schoolOpened) throw new Error("Times present cannot exceed days opened.");
   const reportData = {
+    status: ReportStatus.DRAFT,
+    publishedAt: null,
+    publishedBy: null,
     termId: parsed.termId,
     timesPresent: parsed.timesPresent,
     concentration: parsed.concentration,
@@ -116,11 +120,11 @@ export async function saveTermSetup(formData: FormData) {
     db.legacyTerm.findFirst({ where: { id: data.termId, schoolId: user.schoolId } }),
   ]);
   if (!session || !term) throw new Error("Choose a valid session and term.");
-  await db.termSetup.upsert({
+  await db.$transaction([db.termSetup.upsert({
     where: { schoolId_sessionId_termId: { schoolId: user.schoolId, sessionId: data.sessionId, termId: data.termId } },
     update: { schoolOpened: data.schoolOpened, reportTitle: data.reportTitle, resumptionDate: data.resumptionDate ? new Date(data.resumptionDate) : null },
     create: { schoolId: user.schoolId, sessionId: data.sessionId, termId: data.termId, schoolOpened: data.schoolOpened, reportTitle: data.reportTitle, resumptionDate: data.resumptionDate ? new Date(data.resumptionDate) : null },
-  });
+  }), db.termReport.updateMany({ where: { schoolId: user.schoolId, termId: data.termId, enrollment: { sessionId: data.sessionId } }, data: { status: "DRAFT", publishedAt: null, publishedBy: null } })]);
   revalidatePath("/reports");
 }
 
@@ -150,5 +154,17 @@ export async function publishClassReports(classId: number, termId: number) {
     data: { status: ReportStatus.PUBLISHED, publishedAt: new Date(), publishedBy: user.id },
   });
   revalidatePath("/reports");
+  return { success: true };
+}
+
+export async function unpublishClassReports(classId: number, termId: number) {
+  const user = await requireOwner();
+  const selection = z.object({ classId: positiveInt, termId: positiveInt }).parse({ classId, termId });
+  await db.termReport.updateMany({
+    where: { schoolId: user.schoolId, termId: selection.termId, enrollment: { schoolId: user.schoolId, classId: selection.classId } },
+    data: { status: ReportStatus.DRAFT, publishedAt: null, publishedBy: null },
+  });
+  revalidatePath("/reports");
+  revalidatePath("/family");
   return { success: true };
 }

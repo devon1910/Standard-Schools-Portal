@@ -1,13 +1,16 @@
 import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Mail, School } from "lucide-react";
 import LoginForm from "@/components/login-form";
 import { getSession } from "@/lib/auth";
+import { familyLoginUrl } from "@/lib/family-portal";
 
 const schoolEnquiryHref = "mailto:davidsonekpokpobe@gmail.com?subject=Standard%20Schools%20Portal%20%E2%80%94%20School%20Account%20Enquiry&body=Hello%20David%2C%0A%0AI%20would%20like%20to%20create%20a%20Standard%20Schools%20Portal%20account%20for%20my%20school.%0A%0ASchool%20name%3A%20%0AContact%20name%3A%20%0APhone%20number%3A%20%0A%0AThank%20you.";
 
 export default async function LoginPage() {
-  if (await getSession()) redirect("/dashboard");
+  const session = await getSession();
+  if (session) redirect(session.user.role === "STUDENT" ? "/family" : "/dashboard");
   return (
     <main className="auth-page">
       <section className="auth-hero">
@@ -24,6 +27,7 @@ export default async function LoginPage() {
           <h2>Welcome back</h2>
           <p>Sign in to continue to your school workspace.</p>
           <LoginForm />
+          <p style={{ marginTop: 20 }}>Student or guardian? <Link href={familyLoginUrl()}>Open the report portal</Link>.</p>
           <div className="school-onboarding">
             <School size={21} aria-hidden="true" />
             <div>

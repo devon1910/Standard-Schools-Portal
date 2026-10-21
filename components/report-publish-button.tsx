@@ -1,19 +1,20 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { publishClassReports } from "@/app/actions/results";
+import { publishClassReports, unpublishClassReports } from "@/app/actions/results";
 import { showToast } from "@/components/toast";
 
 export default function ReportPublishButton({ classId, termId }: { classId: number; termId: number }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
 
-  function publish() {
+  function publish(withdraw = false) {
     startTransition(async () => {
       setError("");
       try {
-        await publishClassReports(classId, termId);
-        showToast({ type: "success", title: "Reports published", message: "Completed report cards in this class are now published." });
+        if (withdraw) await unpublishClassReports(classId, termId);
+        else await publishClassReports(classId, termId);
+        showToast({ type: "success", title: withdraw ? "Reports withdrawn" : "Reports published", message: withdraw ? "These reports are hidden from student and guardian accounts." : "Completed report cards in this class are now available to students and guardians." });
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : "Could not publish reports.";
         setError(message);
@@ -22,5 +23,5 @@ export default function ReportPublishButton({ classId, termId }: { classId: numb
     });
   }
 
-  return <div>{error && <span className="small" style={{ color: "var(--danger)" }}>{error}</span>} <button type="button" className="button button-primary" aria-busy={pending} disabled={pending} onClick={publish}>{pending ? "Checking..." : "Publish class reports"}</button></div>;
+  return <div className="header-actions" style={{ flexWrap: "wrap" }}>{error && <span className="small" style={{ color: "var(--danger)" }}>{error}</span>}<button type="button" className="button button-primary" aria-busy={pending} disabled={pending} onClick={() => publish()}>{pending ? "Updating..." : "Publish class reports"}</button><button type="button" className="button button-secondary" disabled={pending} onClick={() => publish(true)}>Withdraw class reports</button></div>;
 }

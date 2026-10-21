@@ -12,6 +12,8 @@ declare module "next-auth" {
       schoolName: string;
       role: UserRole;
       mustChangePassword: boolean;
+      sessionVersion: number;
+      studentProfileId: string | null;
     };
   }
 
@@ -21,6 +23,8 @@ declare module "next-auth" {
     schoolName: string;
     role: UserRole;
     mustChangePassword: boolean;
+    sessionVersion: number;
+    studentProfileId: string | null;
   }
 }
 
@@ -32,5 +36,7 @@ declare module "next-auth/jwt" {
     schoolName: string;
     role: UserRole;
     mustChangePassword: boolean;
+    sessionVersion: number;
+    studentProfileId: string | null;
   }
 }
