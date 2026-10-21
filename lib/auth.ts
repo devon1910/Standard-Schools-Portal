@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { verifyAspNetIdentityPassword } from "@/lib/legacy-password";
 import { safeAuthRedirect } from "@/lib/family-portal";
+import { setPasswordAuditContext } from "@/lib/password-audit";
 
 type LegacyUser = {
   Id: string;
@@ -30,21 +31,26 @@ async function migrateLegacyUser(username: string, password: string) {
   if (!legacy?.UserName || !legacy.PasswordHash) return null;
   if (!verifyAspNetIdentityPassword(legacy.PasswordHash, password)) return null;
 
-  const normalized = legacy.UserName.toLowerCase();
+  const displayName = legacy.UserName;
+  const normalized = displayName.toLowerCase();
   const schoolId = normalized.includes("shs") ? 1 : normalized.includes("sic") ? 2 : null;
   if (!schoolId) return null;
 
-  return db.portalUser.create({
-    data: {
-      username: normalized,
-      displayName: legacy.UserName,
-      passwordHash: await hash(password),
-      role: normalized.endsWith("2") ? "OWNER" : "STAFF",
-      schoolId,
-      mustChangePassword: false,
-      lastLoginAt: new Date(),
-    },
-    include: { school: true, studentProfile: { select: { schoolId: true, status: true } } },
+  const passwordHash = await hash(password);
+  return db.$transaction(async (tx) => {
+    await setPasswordAuditContext(tx, { source: "LEGACY_MIGRATION", label: normalized });
+    return tx.portalUser.create({
+      data: {
+        username: normalized,
+        displayName,
+        passwordHash,
+        role: normalized.endsWith("2") ? "OWNER" : "STAFF",
+        schoolId,
+        mustChangePassword: false,
+        lastLoginAt: new Date(),
+      },
+      include: { school: true, studentProfile: { select: { schoolId: true, status: true } } },
+    });
   });
 }
 

@@ -69,6 +69,22 @@ model PortalUser {
   @@index([schoolId])
 }
 
+model PasswordAuditEvent {
+  id               BigInt   @id @default(autoincrement())
+  schoolId         Int
+  accountId        String
+  accountUsername  String
+  action           String
+  actorId          String?
+  actorUsername    String
+  actorName        String
+  source           String
+  databaseRole     String
+  createdAt        DateTime @default(now())
+
+  @@index([schoolId, createdAt, id])
+}
+
 model LegacySession {
   id           Int       @id @default(autoincrement()) @map("Id")
   name         String    @map("Name")

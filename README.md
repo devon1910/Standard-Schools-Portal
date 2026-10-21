@@ -13,6 +13,7 @@ To request a workspace directly, email [davidsonekpokpobe@gmail.com](mailto:davi
 ## What is included
 
 - School-isolated owner and staff accounts with temporary-password rotation and login lockout.
+- Password audit trail in Settings for school owners. Records account creation, password changes, and resets with actor and time. See [Password audit trail](docs/PASSWORD_AUDIT.md).
 - Permanent student profiles with session-based enrollments and term fee tracking.
 - System-generated student IDs with a school prefix and number width set once in Settings. New records need no admission number. Existing identifiers stay unchanged.
 - Transactional bulk student import from Word (.docx), Excel, or CSV, with Word and Excel templates, preview, and validation. Only first name, last name, class, gender, and date of birth are required. Class names match classes in the selected session. Save older .doc files as .docx before importing.

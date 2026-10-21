@@ -24,7 +24,7 @@ When all seven legacy tables already exist, `20260823_create_legacy_tables` leav
 
 An error such as `relation "Classes" does not exist` means the upgrade migration could not find a table previously assumed to exist. The prerequisite now supports empty databases. The runner rolls back a failed migration, so push the fix and rerun the production workflow on the latest `main` commit. Do not reset the database or mark the failed rewrite as applied.
 
-If only some legacy tables exist, if unrelated tables occupy the target schema, or if the school tables exist in another schema, the prerequisite stops with a configuration error. Check that GitHub's `DATABASE_URL` points to the same database as Vercel and that PostgreSQL `search_path` selects the schema containing the school tables. Restore missing legacy tables when necessary. The prerequisite does not create empty replacements beside partial school data.
+If only some legacy tables exist, if unrelated tables occupy the target schema, or if the school tables exist in another schema, the prerequisite stops with a configuration error. Check Vercel's production `DATABASE_URL` and confirm that PostgreSQL `search_path` selects the schema containing the school tables. Restore missing legacy tables when necessary. The prerequisite does not create empty replacements beside partial school data.
 
 ## Later updates
 
@@ -33,3 +33,5 @@ If only some legacy tables exist, if unrelated tables occupy the target schema, 
 `20261022_family_portal` adds the student account role, its profile link, and a session version for credential revocation. It creates no accounts and changes no existing credentials. Student accounts are deleted with their student profile. Deploy both migrations with `npm run db:migrate` before deploying the new application. See [Report portal setup](../../docs/FAMILY_PORTAL.md).
 
 GitHub Actions starts each production release. Vercel then runs `npm run db:migrate` with its production `DATABASE_URL` before building the application. Configure the production secrets with [the deployment guide](../../docs/DEPLOYMENT.md). Completed migrations are skipped. A failed migration stops the release.
+
+`20261023_password_audit` adds password event history and database triggers. It does not change existing passwords or create past events. Every new account and password hash change creates an event in the same transaction. Account deletion keeps the history. Update, delete, and truncate operations on the audit table are rejected. Deploy this migration before the code that supplies the actor context. See [Password audit trail](../../docs/PASSWORD_AUDIT.md).

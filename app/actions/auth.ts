@@ -4,6 +4,7 @@ import { hash, verify } from "@node-rs/argon2";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireAccount } from "@/lib/auth";
+import { setPasswordAuditContext } from "@/lib/password-audit";
 
 export type PasswordState = { error?: string; success?: boolean };
 
@@ -27,9 +28,13 @@ export async function changePassword(_: PasswordState, formData: FormData): Prom
     return { error: "Current password is incorrect." };
   }
 
-  const updated = await db.portalUser.updateMany({
-    where: { id: account.id, schoolId: user.schoolId, isActive: true, sessionVersion: user.sessionVersion, passwordHash: account.passwordHash },
-    data: { passwordHash: await hash(parsed.data.newPassword), mustChangePassword: false, sessionVersion: { increment: 1 } },
+  const passwordHash = await hash(parsed.data.newPassword);
+  const updated = await db.$transaction(async (tx) => {
+    await setPasswordAuditContext(tx, { source: "SELF_SERVICE", actorId: user.id });
+    return tx.portalUser.updateMany({
+      where: { id: account.id, schoolId: user.schoolId, isActive: true, sessionVersion: user.sessionVersion, passwordHash: account.passwordHash },
+      data: { passwordHash, mustChangePassword: false, sessionVersion: { increment: 1 } },
+    });
   });
   if (!updated.count) return { error: "This account changed. Sign in again or ask your school for help." };
   return { success: true };

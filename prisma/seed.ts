@@ -1,6 +1,7 @@
 import { hash } from "@node-rs/argon2";
 import { UserRole } from "@prisma/client";
 import { db } from "../lib/db";
+import { setPasswordAuditContext } from "../lib/password-audit";
 
 const accounts = [
   { username: "adminusershs2", displayName: "SHS Owner", schoolId: 1, role: UserRole.OWNER, passwordEnv: "SEED_SHS_OWNER_PASSWORD" },
@@ -28,26 +29,30 @@ async function main() {
       continue;
     }
     const passwordHash = await hash(password);
-    await db.portalUser.upsert({
-      where: { username: account.username },
-      update: {
-        displayName: account.displayName,
-        schoolId: account.schoolId,
-        role: account.role,
-        passwordHash,
-        isActive: true,
-        mustChangePassword: true,
-        failedLoginAttempts: 0,
-        lockedUntil: null,
-      },
-      create: {
-        username: account.username,
-        displayName: account.displayName,
-        schoolId: account.schoolId,
-        role: account.role,
-        passwordHash,
-        mustChangePassword: true,
-      },
+    await db.$transaction(async (tx) => {
+      await setPasswordAuditContext(tx, { source: "SEED", label: process.env.GITHUB_ACTOR ?? process.env.USERNAME ?? process.env.USER ?? "Seed script" });
+      await tx.portalUser.upsert({
+        where: { username: account.username },
+        update: {
+          displayName: account.displayName,
+          schoolId: account.schoolId,
+          role: account.role,
+          passwordHash,
+          isActive: true,
+          mustChangePassword: true,
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+          sessionVersion: { increment: 1 },
+        },
+        create: {
+          username: account.username,
+          displayName: account.displayName,
+          schoolId: account.schoolId,
+          role: account.role,
+          passwordHash,
+          mustChangePassword: true,
+        },
+      });
     });
     console.log(`Password set for ${account.username}.`);
   }

@@ -12,6 +12,7 @@ import { MAX_STUDENT_IMPORT_ROWS, parseImportDate, studentImportRowSchema, type 
 import { validateOrigin } from "@/lib/nigeria-locations";
 import { allocateStudentIds, StudentIdSetupRequired } from "@/lib/allocate-student-ids";
 import { studentIdConfigSchema } from "@/lib/student-id";
+import { setPasswordAuditContext } from "@/lib/password-audit";
 
 const positiveInt = z.coerce.number().int().positive();
 const optionalDate = z.preprocess((value) => (value ? new Date(String(value)) : null), z.date().nullable());
@@ -412,6 +413,10 @@ export async function createPortalUser(formData: FormData) {
     role: z.enum(["OWNER", "STAFF"]),
     temporaryPassword: z.string().min(10),
   }).parse(Object.fromEntries(formData));
-  await db.portalUser.create({ data: { username: data.username.toLowerCase(), displayName: data.displayName, role: data.role, passwordHash: await hash(data.temporaryPassword), schoolId: owner.schoolId, mustChangePassword: true } });
+  const passwordHash = await hash(data.temporaryPassword);
+  await db.$transaction(async (tx) => {
+    await setPasswordAuditContext(tx, { source: "SCHOOL_OWNER", actorId: owner.id });
+    await tx.portalUser.create({ data: { username: data.username.toLowerCase(), displayName: data.displayName, role: data.role, passwordHash, schoolId: owner.schoolId, mustChangePassword: true } });
+  });
   revalidatePath("/settings");
 }

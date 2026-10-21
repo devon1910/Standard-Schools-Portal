@@ -42,15 +42,17 @@ This workflow does not reset the database, run the legacy backfill, or seed acco
 
 For an empty database, the `20260823_create_legacy_tables` prerequisite creates the base tables before the rewrite migration changes them. For an existing database, it preserves the legacy tables and rows. It rejects partial or unrelated schemas and points to the connection or schema setting that needs attention.
 
-If a run failed with `relation "Classes" does not exist`, push this fix and run the workflow for the latest `main` commit. The failed rewrite was rolled back and can be retried. If the connection is meant to use existing school records, first confirm that GitHub's `DATABASE_URL` matches Vercel's database.
+If a run failed with `relation "Classes" does not exist`, push this fix and run the workflow for the latest `main` commit. The failed rewrite was rolled back and can be retried. If the connection is meant to use existing school records, confirm that Vercel's production `DATABASE_URL` points to those records and selects the correct schema.
+
+The error `The column PortalUser.sessionVersion does not exist` means the running code is ahead of its database schema. This can cause sign-in to return 401 even when the password is correct. Run the release workflow on the latest `main` commit to apply the pending migrations to Vercel's production database. Do not seed accounts or reset passwords to fix this schema error.
 
 ## Local migration checks
 
 Create a disposable PostgreSQL database whose name ends in `_test`. Set `MIGRATION_TEST_DATABASE_URL` to its connection string, then run `npm run test:migrations`. The checks create temporary schemas and remove them when finished. They never fall back to the production `DATABASE_URL`.
 
-These checks reproduce the original missing-table failure, then test a clean deployment, repeat deployment, legacy data preservation, and an already upgraded database. They also test partial, unrelated, and incorrectly selected schemas. GitHub runs the same checks before production migrations.
+These checks reproduce the original missing-table failure, then test a clean deployment, repeat deployment, legacy data preservation, and an already upgraded database. They also test partial, unrelated, and incorrectly selected schemas. Password audit checks verify actor attribution, rollback, and history retention. GitHub runs the same checks before production migrations.
 
-For the new student ID and family portal code, the pending updates are `20261021_student_ids` and `20261022_family_portal`. The workflow applies them if the database history does not already mark them complete.
+The later updates are `20261021_student_ids`, `20261022_family_portal`, and `20261023_password_audit`. The workflow applies them if the database history does not already mark them complete. Password auditing starts when its migration completes. It does not reconstruct earlier changes. See [Password audit trail](PASSWORD_AUDIT.md).
 
 ## References
 

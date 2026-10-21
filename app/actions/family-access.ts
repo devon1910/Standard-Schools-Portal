@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireOwner } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { setPasswordAuditContext } from "@/lib/password-audit";
 
 export type StudentLoginState = { error?: string; username?: string; temporaryPassword?: string };
 
@@ -17,15 +18,18 @@ export async function issueStudentLogin(_: StudentLoginState, formData: FormData
   if (!student) return { error: "Student not found or archived." };
   const temporaryPassword = randomBytes(18).toString("base64url");
   const passwordHash = await hash(temporaryPassword);
-  const account = await db.portalUser.upsert({
-    where: { studentProfileId: student.id },
-    create: {
-      studentProfileId: student.id, schoolId: owner.schoolId, role: "STUDENT",
-      username: `student.${owner.schoolId}.${student.id}`, displayName: student.name,
-      passwordHash, mustChangePassword: true,
-    },
-    update: { passwordHash, mustChangePassword: true, isActive: true, failedLoginAttempts: 0, lockedUntil: null, sessionVersion: { increment: 1 } },
-    select: { username: true },
+  const account = await db.$transaction(async (tx) => {
+    await setPasswordAuditContext(tx, { source: "SCHOOL_OWNER", actorId: owner.id });
+    return tx.portalUser.upsert({
+      where: { studentProfileId: student.id },
+      create: {
+        studentProfileId: student.id, schoolId: owner.schoolId, role: "STUDENT",
+        username: `student.${owner.schoolId}.${student.id}`, displayName: student.name,
+        passwordHash, mustChangePassword: true,
+      },
+      update: { passwordHash, mustChangePassword: true, isActive: true, failedLoginAttempts: 0, lockedUntil: null, sessionVersion: { increment: 1 } },
+      select: { username: true },
+    });
   });
   revalidatePath(`/students/${student.id}`);
   return { username: account.username, temporaryPassword };

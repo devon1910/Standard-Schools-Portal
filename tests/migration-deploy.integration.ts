@@ -4,6 +4,9 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { Client } from "pg";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { setPasswordAuditContext } from "../lib/password-audit";
 
 // Never fall back to DATABASE_URL: these checks create and remove test schemas.
 const testConnectionString = process.env.MIGRATION_TEST_DATABASE_URL;
@@ -112,6 +115,110 @@ try {
     assert.equal((await client.query('SELECT COUNT(*)::int AS count FROM "Students"')).rows[0].count, 1);
     assert.equal((await client.query('SELECT COUNT(*)::int AS count FROM "_prisma_migrations"')).rows[0].count, migrationNames.length);
     console.log("PASS: legacy data and identity preservation, date cleanup, and an already upgraded database");
+  });
+
+  await withSchema(async (client, url) => {
+    const auditName = "20261023_password_audit";
+    for (const name of migrationNames.filter((name) => name !== auditName)) {
+      await client.query(await readMigration(name));
+    }
+    await client.query(`
+      INSERT INTO "PortalUser" ("id", "username", "displayName", "passwordHash", "role", "schoolId", "updatedAt") VALUES
+        ('owner', 'owner', 'School Owner', 'owner-hash', 'OWNER', 1, now()),
+        ('staff', 'staff', 'Staff Member', 'existing-staff-hash', 'STAFF', 1, now()),
+        ('other-owner', 'other-owner', 'Other Owner', 'other-hash', 'OWNER', 2, now());
+    `);
+    await client.query(await readMigration(auditName));
+    const count = async () => (await client.query('SELECT COUNT(*)::int AS count FROM "PasswordAuditEvent"')).rows[0].count;
+    const password = async () => (await client.query('SELECT "passwordHash" FROM "PortalUser" WHERE "id" = \'staff\'')).rows[0].passwordHash;
+    const latest = async () => (await client.query('SELECT * FROM "PasswordAuditEvent" ORDER BY "id" DESC LIMIT 1')).rows[0];
+    const setContext = async (source: string, actor = "", label = "") => {
+      await client.query(`SELECT set_config('app.password_audit_source', $1, true),
+        set_config('app.password_audit_actor_id', $2, true), set_config('app.password_audit_actor_label', $3, true)`, [source, actor, label]);
+    };
+    const updatePassword = (hash: string) => client.query('UPDATE "PortalUser" SET "passwordHash" = $1 WHERE "id" = \'staff\'', [hash]);
+    assert.equal(await password(), "existing-staff-hash");
+    assert.equal(await count(), 0, "Installing auditing must not invent past events");
+
+    // Exercise the same adapter and actor helper that the application uses.
+    const schema = (await client.query("SELECT current_schema()")).rows[0].current_schema;
+    const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }, { schema }) });
+    try {
+      await prisma.$transaction(async (tx) => {
+        await setPasswordAuditContext(tx, { source: "SELF_SERVICE", actorId: "staff" });
+        await tx.portalUser.update({ where: { id: "staff" }, data: { passwordHash: "self-service-hash" } });
+      });
+    } finally {
+      await prisma.$disconnect();
+    }
+    assert.equal(await count(), 1);
+    assert.equal((await latest()).action, "PASSWORD_CHANGED");
+    assert.equal((await latest()).actorId, "staff");
+
+    await client.query("BEGIN");
+    await setContext("SCHOOL_OWNER", "owner");
+    await updatePassword("owner-reset-hash");
+    await client.query("COMMIT");
+    const reset = await latest();
+    assert.equal(reset.action, "PASSWORD_RESET");
+    assert.equal(reset.schoolId, 1);
+    assert.equal(reset.accountUsername, "staff");
+    assert.equal(reset.actorUsername, "owner");
+    assert.equal(reset.actorName, "School Owner");
+    assert.equal(reset.source, "SCHOOL_OWNER");
+    assert(reset.createdAt instanceof Date);
+
+    // Unchanged hashes and ordinary sign-in updates must not look like password changes.
+    await updatePassword("owner-reset-hash");
+    await client.query('UPDATE "PortalUser" SET "lastLoginAt" = now(), "failedLoginAttempts" = 1 WHERE "id" = \'staff\'');
+    assert.equal(await count(), 2);
+    await client.query("BEGIN");
+    await setContext("SCHOOL_OWNER", "owner");
+    await updatePassword("rolled-back-hash");
+    await client.query("ROLLBACK");
+    assert.equal(await password(), "owner-reset-hash");
+    assert.equal(await count(), 2);
+
+    for (const [source, actor] of [["SCHOOL_OWNER", "other-owner"], ["SCHOOL_OWNER", "staff"], ["SELF_SERVICE", "owner"]]) {
+      await client.query("BEGIN");
+      await setContext(source, actor);
+      await assert.rejects(updatePassword("rejected-hash"), /Password audit actor|school owner|account owner/);
+      await client.query("ROLLBACK");
+      assert.equal(await password(), "owner-reset-hash");
+      assert.equal(await count(), 2);
+    }
+
+    // Missing application context is recorded as the database role, never the previous request's actor.
+    await updatePassword("direct-sql-hash");
+    assert.equal((await latest()).source, "DATABASE");
+    assert.equal((await latest()).actorId, null);
+    assert.equal((await latest()).actorUsername, (await client.query("SELECT current_user")).rows[0].current_user);
+    await client.query("BEGIN");
+    await setContext("SEED", "", "test-operator");
+    await updatePassword("seed-hash");
+    await client.query("COMMIT");
+    assert.equal((await latest()).source, "SEED");
+    assert.equal((await latest()).actorUsername, "test-operator");
+
+    for (const [source, expected] of [["SCHOOL_OWNER", "ACCOUNT_CREATED"], ["LEGACY_MIGRATION", "LEGACY_ACCOUNT_IMPORTED"]]) {
+      await client.query("BEGIN");
+      await setContext(source, source === "SCHOOL_OWNER" ? "owner" : "", "legacy-login");
+      await client.query(`INSERT INTO "PortalUser" ("id", "username", "displayName", "passwordHash", "role", "schoolId", "updatedAt")
+        VALUES ($1, $1, 'New Account', 'new-account-hash', 'STAFF', 1, now())`, [source]);
+      await client.query("COMMIT");
+      assert.equal((await latest()).action, expected);
+    }
+
+    await assert.rejects(client.query('UPDATE "PasswordAuditEvent" SET "actorName" = \'tampered\''), /cannot be changed or deleted/);
+    await assert.rejects(client.query('DELETE FROM "PasswordAuditEvent"'), /cannot be changed or deleted/);
+    await assert.rejects(client.query('TRUNCATE "PasswordAuditEvent"'), /cannot be changed or deleted/);
+    await client.query('DELETE FROM "PortalUser" WHERE "id" IN (\'owner\', \'staff\')');
+    assert.equal(await count(), 6, "Deleting an account must preserve its audit history");
+    assert.equal((await client.query('SELECT "actorName" FROM "PasswordAuditEvent" WHERE "id" = $1', [reset.id])).rows[0].actorName, "School Owner");
+    const columns = await client.query("SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'PasswordAuditEvent'");
+    assert(!columns.rows.some((row) => /password|hash/i.test(row.column_name)), "Audit rows must not store passwords or hashes");
+    assert(!JSON.stringify((await client.query('SELECT * FROM "PasswordAuditEvent"')).rows).includes("-hash"));
+    console.log("PASS: password audit attribution, history retention, immutable events, and atomic rollback");
   });
 
   await withSchema(async (client, url) => {
