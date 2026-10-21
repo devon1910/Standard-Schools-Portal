@@ -4,6 +4,7 @@ import { useActionState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { changePassword } from "@/app/actions/auth";
+import PasswordInput from "@/components/password-input";
 
 export default function ChangePasswordForm({ loginPath = "/login" }: { loginPath?: string }) {
   const router = useRouter();
@@ -11,5 +12,11 @@ export default function ChangePasswordForm({ loginPath = "/login" }: { loginPath
   useEffect(() => {
     if (state.success) void signOut({ redirect: false }).then(() => { router.replace(`${loginPath}?passwordChanged=1`); router.refresh(); });
   }, [state.success, loginPath, router]);
-  return <form action={action}>{state.error && <div className="notice error">{state.error}</div>}<div className="field"><label>Current password</label><input className="input" name="currentPassword" type="password" required /></div><div className="field"><label>New password</label><input className="input" name="newPassword" type="password" minLength={10} required /></div><div className="field"><label>Confirm new password</label><input className="input" name="confirmPassword" type="password" minLength={10} required /></div><button className="button button-primary" aria-busy={pending} disabled={pending}>{pending ? "Updating…" : "Update password"}</button></form>;
+  return <form action={action}>
+    {state.error && <div className="notice error">{state.error}</div>}
+    <div className="field"><label htmlFor="currentPassword">Current password</label><PasswordInput id="currentPassword" name="currentPassword" autoComplete="current-password" required /></div>
+    <div className="field"><label htmlFor="newPassword">New password</label><PasswordInput id="newPassword" name="newPassword" autoComplete="new-password" minLength={10} required /></div>
+    <div className="field"><label htmlFor="confirmPassword">Confirm new password</label><PasswordInput id="confirmPassword" name="confirmPassword" autoComplete="new-password" minLength={10} required /></div>
+    <button className="button button-primary" aria-busy={pending} disabled={pending}>{pending ? "Updating…" : "Update password"}</button>
+  </form>;
 }

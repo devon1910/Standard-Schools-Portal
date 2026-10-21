@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { LogIn } from "lucide-react";
+import PasswordInput from "@/components/password-input";
 
 export default function LoginForm({ destination = "/" }: { destination?: string }) {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function LoginForm({ destination = "/" }: { destination?: string 
     <form onSubmit={submit}>
       {error && <div className="notice error" role="alert">{error}</div>}
       <div className="field"><label htmlFor="username">Username</label><input className="input" id="username" name="username" autoComplete="username" required autoFocus /></div>
-      <div className="field"><label htmlFor="password">Password</label><input className="input" id="password" name="password" type="password" autoComplete="current-password" required /></div>
+      <div className="field"><label htmlFor="password">Password</label><PasswordInput id="password" name="password" autoComplete="current-password" required /></div>
       <button className="button button-primary" aria-busy={pending} disabled={pending} type="submit"><LogIn size={17} />{pending ? "Signing in…" : "Sign in"}</button>
     </form>
   );
