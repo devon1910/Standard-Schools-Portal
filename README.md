@@ -58,6 +58,12 @@ To request a workspace directly, email [davidsonekpokpobe@gmail.com](mailto:davi
 
 The migration never drops the legacy `Students` or ASP.NET Identity tables. Rollback therefore remains possible, although records created after cutover must be reconciled before reverting.
 
+## Ongoing production releases
+
+GitHub Actions checks changes pushed to `main`, applies pending database migrations, then deploys to Vercel. A failed migration stops the release. Production releases run one at a time. Vercel's automatic Git deployment for `main` is disabled so it cannot deploy ahead of the migrations.
+
+Configure the `production` GitHub environment with `DATABASE_URL`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` before pushing this workflow. See [deployment setup](docs/DEPLOYMENT.md) for the steps and manual reruns.
+
 ## Quality checks
 
 ```powershell

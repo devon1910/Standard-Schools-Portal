@@ -5,8 +5,8 @@ The report portal runs in the same Next.js application. It uses the existing acc
 ## Use the current Vercel deployment
 
 1. Back up the database. Review the two additive migrations in `prisma/migrations/20261021_student_ids` and `prisma/migrations/20261022_family_portal`.
-2. Apply the migrations with `npm run db:migrate` in the deployment environment. Do this before deploying the new application.
-3. Deploy the application. Keep the current `NEXTAUTH_URL` and `NEXTAUTH_SECRET`. Leave `FAMILY_PORTAL_URL` empty.
+2. Configure the GitHub production environment using [the deployment guide](DEPLOYMENT.md).
+3. Push to `main` or run the production workflow. It applies pending migrations before deploying to Vercel. Keep the current `NEXTAUTH_URL` and `NEXTAUTH_SECRET`. Leave `FAMILY_PORTAL_URL` empty.
 4. Open `https://YOUR-PROJECT.vercel.app/family/login`.
 5. As a school owner, open a student's profile and select **Create student login**. Give the displayed credentials and portal link to the student or guardian.
 
