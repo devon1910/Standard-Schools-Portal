@@ -40,7 +40,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Stu
   ]);
   const sessionId = await getCurrentSessionId(user.schoolId, sessions, params.session);
   const classes = allClasses.filter((item) => item.sessionId === sessionId);
-  const classId = Number(params.class) || undefined;
+  const classId = classes.find((item) => item.id === Number(params.class))?.id;
   const page = Math.max(1, Number(params.page) || 1);
   const query = params.q?.trim() ?? "";
   const where = {

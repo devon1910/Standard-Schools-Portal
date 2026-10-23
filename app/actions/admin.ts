@@ -14,7 +14,7 @@ import { validateOrigin } from "@/lib/nigeria-locations";
 import { allocateStudentIds, StudentIdSetupRequired } from "@/lib/allocate-student-ids";
 import { studentIdConfigSchema } from "@/lib/student-id";
 import { setPasswordAuditContext } from "@/lib/password-audit";
-import { canPromote, repeatedTarget } from "@/lib/promotion";
+import { canPromote, normalizedClassName, repeatedTarget } from "@/lib/promotion";
 
 const positiveInt = z.coerce.number().int().positive();
 const optionalDate = z.preprocess((value) => (value ? new Date(String(value)) : null), z.date().nullable());
@@ -43,10 +43,11 @@ export async function createClass(formData: FormData) {
     db.legacySession.findFirst({ where: { id: data.sessionId, schoolId: user.schoolId } }),
   ]);
   if (!classType || !session) redirect("/academics?error=invalid-selection");
-  const duplicate = await db.legacyClass.findFirst({
-    where: { schoolId: user.schoolId, sessionId: data.sessionId, name: { equals: data.name, mode: "insensitive" } },
+  const existingClasses = await db.legacyClass.findMany({
+    where: { schoolId: user.schoolId, sessionId: data.sessionId },
+    select: { name: true },
   });
-  if (duplicate) redirect("/academics?error=class-exists");
+  if (existingClasses.some((item) => normalizedClassName(item.name) === normalizedClassName(data.name))) redirect("/academics?error=class-exists");
   await db.legacyClass.create({
     data: { ...data, classTeacher: data.classTeacher || null, schoolId: user.schoolId, dateCreated: new Date(), modifiedBy: user.id },
   });
@@ -148,7 +149,7 @@ export async function importStudents(input: {
 
   const errors: StudentImportResult["errors"] = [];
   const normalized = rows.flatMap((row) => {
-    const matches = classes.filter((item) => item.name.trim().toLowerCase() === row.className.toLowerCase());
+    const matches = classes.filter((item) => normalizedClassName(item.name) === normalizedClassName(row.className));
     if (matches.length !== 1) {
       errors.push({ rowNumber: row.rowNumber, message: `Class "${row.className}" must match one class in the selected session.` });
       return [];
@@ -377,8 +378,14 @@ export async function cloneSessionClasses(formData: FormData) {
     await db.legacySession.create({ data: { name: targetSessionName, schoolId: user.schoolId, dateCreated: new Date(), modifiedBy: user.id } });
   const sourceClasses = await db.legacyClass.findMany({ where: { schoolId: user.schoolId, sessionId: sourceSessionId, archivedAt: null } });
   const existing = await db.legacyClass.findMany({ where: { schoolId: user.schoolId, sessionId: target.id }, select: { name: true } });
-  const existingNames = new Set(existing.map((item) => item.name.toLowerCase()));
-  await db.legacyClass.createMany({ data: sourceClasses.filter((item) => !existingNames.has(item.name.toLowerCase())).map((item) => ({ name: item.name, classTeacher: item.classTeacher, classTypeId: item.classTypeId, sessionId: target.id, schoolId: user.schoolId, dateCreated: new Date(), modifiedBy: user.id })) });
+  const existingNames = new Set(existing.map((item) => normalizedClassName(item.name)));
+  const missingClasses = sourceClasses.filter((item) => {
+    const name = normalizedClassName(item.name);
+    if (existingNames.has(name)) return false;
+    existingNames.add(name);
+    return true;
+  });
+  await db.legacyClass.createMany({ data: missingClasses.map((item) => ({ name: item.name, classTeacher: item.classTeacher, classTypeId: item.classTypeId, sessionId: target.id, schoolId: user.schoolId, dateCreated: new Date(), modifiedBy: user.id })) });
   redirect(`/promotion?source=${sourceSessionId}&target=${target.id}&toast=session-created`);
 }
 

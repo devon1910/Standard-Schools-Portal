@@ -17,7 +17,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const sessionId = await getCurrentSessionId(user.schoolId, sessions, params.session);
   const termId = Number(params.term) || terms[0]?.id;
   const classes = sessionId ? await db.legacyClass.findMany({ where: { schoolId: user.schoolId, sessionId, archivedAt: null }, orderBy: { name: "asc" } }) : [];
-  const classId = Number(params.class) || classes[0]?.id;
+  const classId = classes.find((item) => item.id === Number(params.class))?.id ?? classes[0]?.id;
   const [enrollments, setup, subjectCount] = classId ? await Promise.all([
     db.enrollment.findMany({ where: { schoolId: user.schoolId, sessionId, classId, active: true }, include: { student: true, scores: { where: { termId } }, reports: { where: { termId } } }, orderBy: { student: { name: "asc" } } }),
     db.termSetup.findUnique({ where: { schoolId_sessionId_termId: { schoolId: user.schoolId, sessionId: sessionId!, termId: termId! } } }),

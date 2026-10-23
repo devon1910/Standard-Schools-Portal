@@ -1,5 +1,7 @@
 "use client";
 
+import { normalizedClassName } from "@/lib/promotion";
+
 import { useRef, useState, useTransition } from "react";
 import { Download, FileSpreadsheet, Upload } from "lucide-react";
 import ExcelJS from "exceljs";
@@ -43,8 +45,8 @@ export default function StudentImportForm({ sessions, classes, defaultSessionId 
   const [result, setResult] = useState<StudentImportResult>();
   const [pending, startTransition] = useTransition();
   const [reading, setReading] = useState(false);
-  const availableNames = new Set(visibleClasses.map((item) => item.name.trim().toLowerCase()));
-  const unmatchedClasses = [...new Set(rows.filter((row) => !availableNames.has(row.className.trim().toLowerCase())).map((row) => row.className))];
+  const availableNames = new Set(visibleClasses.map((item) => normalizedClassName(item.name)));
+  const unmatchedClasses = [...new Set(rows.filter((row) => !availableNames.has(normalizedClassName(row.className))).map((row) => row.className))];
   const exampleClass = visibleClasses[0]?.name ?? importExample[2];
 
   function changeSession(value: number) {

@@ -23,7 +23,7 @@ export default async function PortalLayout({ children }: { children: React.React
     <div className="workspace">
       <header className="topbar">
         <div className="topbar-brand"><SchoolLogo logoUrl={user.schoolLogoUrl} schoolName={user.schoolName} /><div className="topbar-title"><h1>{user.schoolName}</h1><p>School operations and academic records</p></div></div>
-        <div className="topbar-actions"><SessionSelector sessions={sessions} currentSessionId={currentSessionId} /><span className="role-chip">{user.role}</span><div className="mobile-account-actions"><LogoutButton /></div></div>
+        <div className="topbar-actions"><Suspense><SessionSelector sessions={sessions} currentSessionId={currentSessionId} /></Suspense><span className="role-chip">{user.role}</span><div className="mobile-account-actions"><LogoutButton /></div></div>
       </header>
       <NavigationLinks mobile />
       <main className="main-content">{children}</main>

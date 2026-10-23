@@ -75,6 +75,39 @@ test.beforeEach(async ({ page }) => {
   await expect(page).toHaveURL(/\/dashboard$/, { timeout: 20_000 });
 });
 
+test("session changes discard stale class filters and promotion uses the selected session", async ({ page }) => {
+  test.setTimeout(90_000);
+  const source = await db.legacyClass.findFirstOrThrow({ where: { schoolId }, orderBy: { name: "asc" } });
+  const other = await db.legacyClass.create({ data: { schoolId, sessionId: emptySessionId, classTypeId: source.classTypeId, name: "JSS 1A", dateCreated: new Date() } });
+  const student = await db.studentProfile.create({ data: { schoolId, name: "Session Filter Student", enrollments: { create: { schoolId, sessionId: source.sessionId, classId: source.id } } } });
+  const subject = await db.legacySubject.create({ data: { schoolId, classTypeId: source.classTypeId, name: "Filter subject", dateCreated: new Date() } });
+  await db.classSubject.create({ data: { schoolId, classId: source.id, subjectId: subject.id } });
+  const term = await db.legacyTerm.findFirstOrThrow({ where: { schoolId } });
+  const question = await db.legacyQuestion.create({ data: { schoolId, sessionId: source.sessionId, classId: source.id, termId: term.id, subjectId: subject.id, type: "Exam", questionUrl: "https://example.test/question.pdf", filePublicId: "filter-test", dateCreated: new Date() } });
+  try {
+    for (const path of ["/students", "/reports", "/results"]) {
+      await page.goto(`${path}?session=${source.sessionId}&class=${other.id}`);
+      await expect(page.getByRole("cell").filter({ hasText: student.name })).toBeVisible();
+    }
+    await page.goto(`/questions?session=${source.sessionId}&class=${other.id}`);
+    await expect(page.getByRole("link", { name: "Open file", exact: true })).toBeVisible();
+    await page.goto(`/students?session=${emptySessionId}&class=${other.id}&page=3&subject=${subject.id}`);
+    await expect(page.getByLabel("Current session")).toHaveValue(String(emptySessionId));
+    await page.getByLabel("Current session").selectOption(String(source.sessionId));
+    await expect(page).toHaveURL(new RegExp(`/students\\?session=${source.sessionId}$`));
+    await expect(page.getByRole("cell").filter({ hasText: student.name })).toBeVisible();
+    await page.goto(`/promotion?session=${emptySessionId}`);
+    await expect(page.locator('select[name="sourceSessionId"]')).toHaveValue(String(emptySessionId));
+  } finally {
+    await db.legacyQuestion.delete({ where: { id: question.id } });
+    await db.classSubject.deleteMany({ where: { schoolId, subjectId: subject.id } });
+    await db.legacySubject.delete({ where: { id: subject.id } });
+    await db.enrollment.deleteMany({ where: { schoolId, studentId: student.id } });
+    await db.studentProfile.delete({ where: { id: student.id } });
+    await db.legacyClass.delete({ where: { id: other.id } });
+  }
+});
+
 test("promotion offers higher classes and enrolls repeated students in the same class", async ({ page }) => {
   test.setTimeout(90_000);
   const source = await db.legacyClass.findFirstOrThrow({ where: { schoolId, name: "JSS 1A" } });

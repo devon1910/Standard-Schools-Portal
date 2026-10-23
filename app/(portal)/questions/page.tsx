@@ -20,7 +20,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
   };
   const sessionId = selectedId(params.session, sessions);
   const termId = selectedId(params.term, terms);
-  const classId = selectedId(params.class, classes);
+  const classId = selectedId(params.class, classes.filter((item) => !sessionId || item.sessionId === sessionId));
   const subjectId = selectedId(params.subject, subjects);
   const type = params.type === "CA" || params.type === "Exam" ? params.type : undefined;
   const uploadSessionId = await getCurrentSessionId(user.schoolId, sessions);

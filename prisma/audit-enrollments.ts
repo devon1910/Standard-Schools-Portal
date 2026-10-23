@@ -67,6 +67,18 @@ try {
   `, [schoolId, sessionId]);
   console.log("Classes with the same normalized name:");
   console.table(duplicates.rows);
+
+  const identityConflicts = await client.query(`
+    SELECT array_agg(l."Id" ORDER BY l."Id") AS legacy_ids,
+      array_agg(DISTINCT l."SessionId") AS session_ids,
+      count(DISTINCT (regexp_replace(upper(trim(l."Name")), '[[:space:]]+', ' ', 'g'), l."Dob")) AS different_identities
+    FROM "Students" l WHERE l."SchoolId"=$1 AND trim(l."AdmissionNumber")<>''
+    GROUP BY upper(trim(l."AdmissionNumber"))
+    HAVING count(DISTINCT (regexp_replace(upper(trim(l."Name")), '[[:space:]]+', ' ', 'g'), l."Dob"))>1
+      AND bool_or(l."SessionId"=$2)
+  `, [schoolId, sessionId]);
+  console.log("Shared admission numbers with conflicting student identities (review before backfill):");
+  console.table(identityConflicts.rows);
   await client.query("ROLLBACK");
 } finally {
   await client.end();

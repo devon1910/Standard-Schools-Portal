@@ -16,7 +16,7 @@ export default async function ResultsPage({ searchParams }: { searchParams: Prom
   const sessionId = await getCurrentSessionId(user.schoolId, sessions, params.session);
   const termId = Number(params.term) || terms[0]?.id;
   const classes = sessionId ? await db.legacyClass.findMany({ where: { schoolId: user.schoolId, sessionId, archivedAt: null }, orderBy: { name: "asc" } }) : [];
-  const classId = Number(params.class) || classes[0]?.id;
+  const classId = classes.find((item) => item.id === Number(params.class))?.id ?? classes[0]?.id;
   const selectedClass = classes.find((item) => item.id === classId);
   const [availableSubjects, configured] = selectedClass ? await Promise.all([
     db.legacySubject.findMany({ where: { schoolId: user.schoolId, classTypeId: selectedClass.classTypeId, archivedAt: null }, orderBy: { name: "asc" } }),
