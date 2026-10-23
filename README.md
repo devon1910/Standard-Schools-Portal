@@ -18,7 +18,7 @@ To request a workspace directly, email [davidsonekpokpobe@gmail.com](mailto:davi
 - Permanent student profiles with session-based enrollments and term fee tracking.
 - System-generated student IDs with a school prefix and number width set once in Settings. New records need no admission number. Existing identifiers stay unchanged.
 - Transactional bulk student import from Word (.docx), Excel, or CSV, with Word and Excel templates, preview, and validation. Only first name, last name, class, gender, and date of birth are required. Class names match classes in the selected session. Save older .doc files as .docx before importing.
-- Guided session setup and bulk promotion, including left-school and graduated outcomes.
+- Guided session setup and bulk promotion to higher classes, including repeated, left-school and graduated outcomes.
 - Sessions, classes, class categories, subjects, and a signed-upload question bank.
 - Class-wide subject configuration and spreadsheet-style 20/20/60 score sheets.
 - Attendance, behaviour ratings, teacher/principal remarks, result validation and publishing.
@@ -86,3 +86,13 @@ Playwright smoke tests use `PLAYWRIGHT_BASE_URL` or default to `http://127.0.0.1
 - **Student or guardian:** the linked student's published report cards and their own password. One account is issued per student.
 
 Every query and Server Action independently checks the authenticated school. Student accounts cannot use staff pages or actions. Password resets and account disabling invalidate current sessions. There is no public report lookup.
+
+## Check missing student records
+
+Run the read-only enrollment audit with a working `DATABASE_URL` in `.env.local`. This example checks Standard High School (school ID 1) for 2025/2026:
+
+```powershell
+node --env-file=.env.local --import tsx prisma/audit-enrollments.ts 1 2025/2026
+```
+
+The audit lists student counts by class, inactive enrollments, archived classes, class and session mismatches, duplicate class names, and legacy rows without linked enrollments. A duplicate admission number can explain an unlinked legacy row because the backfill keeps the newest row. Review the findings before changing records. The audit does not change data.

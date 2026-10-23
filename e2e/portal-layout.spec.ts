@@ -75,6 +75,51 @@ test.beforeEach(async ({ page }) => {
   await expect(page).toHaveURL(/\/dashboard$/, { timeout: 20_000 });
 });
 
+test("promotion offers higher classes and enrolls repeated students in the same class", async ({ page }) => {
+  test.setTimeout(90_000);
+  const source = await db.legacyClass.findFirstOrThrow({ where: { schoolId, name: "JSS 1A" } });
+  const lower = await db.legacyClass.create({ data: { schoolId, sessionId: source.sessionId, classTypeId: source.classTypeId, name: "BASIC 5", dateCreated: new Date() } });
+  const students = await Promise.all(["Repeat Student", "Promoted Student"].map((name) => db.studentProfile.create({
+    data: { schoolId, name, enrollments: { create: { schoolId, sessionId: source.sessionId, classId: source.id } } },
+  })));
+  const targetName = `Promotion ${randomUUID().slice(0, 8)}`;
+  try {
+    await page.goto("/promotion");
+    await page.locator('select[name="sourceSessionId"]').selectOption(String(source.sessionId));
+    await page.locator('input[name="targetSessionName"]').fill(targetName);
+    await page.getByRole("button", { name: "Create and review students" }).click();
+    const sourceClass = page.locator(".wizard-class").filter({ has: page.getByRole("heading", { name: "JSS 1A", exact: true }) });
+    const promotion = sourceClass.getByLabel("Promote into");
+    await expect(promotion).toBeVisible();
+    const options = await promotion.locator("option").allTextContents();
+    expect(options).not.toContain("BASIC 5");
+    expect(options).not.toContain("JSS 1A");
+    expect(options).not.toContain("JSS 1B");
+    expect(options).toContain("JSS 2A");
+    const target = await db.legacySession.findFirstOrThrow({ where: { schoolId, name: targetName } });
+    const nextClass = await db.legacyClass.findFirstOrThrow({ where: { schoolId, sessionId: target.id, name: "JSS 2A" } });
+    expect(await promotion.inputValue()).toBe(String(nextClass.id));
+    await sourceClass.getByLabel("Outcome for Repeat Student").selectOption("REPEATED");
+    await page.getByRole("button", { name: "Confirm session promotion" }).click();
+    await expect(page).toHaveURL(new RegExp(`/students\\?session=${target.id}$`));
+    await expect(page.getByRole("cell").filter({ hasText: "Repeat Student" })).toBeVisible();
+    await expect(page.getByRole("cell").filter({ hasText: "Promoted Student" })).toBeVisible();
+    const enrolled = await db.enrollment.findMany({ where: { schoolId, studentId: { in: students.map((student) => student.id) } }, include: { class: true } });
+    expect(enrolled.filter((item) => item.sessionId === source.sessionId && item.active)).toHaveLength(2);
+    expect(enrolled.find((item) => item.studentId === students[0].id && item.sessionId === target.id)?.class.name).toBe("JSS 1A");
+    expect(enrolled.find((item) => item.studentId === students[1].id && item.sessionId === target.id)?.class.name).toBe("JSS 2A");
+  } finally {
+    await db.enrollment.deleteMany({ where: { schoolId, studentId: { in: students.map((student) => student.id) } } });
+    await db.studentProfile.deleteMany({ where: { id: { in: students.map((student) => student.id) } } });
+    const target = await db.legacySession.findFirst({ where: { schoolId, name: targetName } });
+    if (target) {
+      await db.legacyClass.deleteMany({ where: { schoolId, sessionId: target.id } });
+      await db.legacySession.delete({ where: { id: target.id } });
+    }
+    await db.legacyClass.delete({ where: { id: lower.id } });
+  }
+});
+
 test("owners can upload, replace, and remove a logo without entering a URL", async ({ page }) => {
   test.setTimeout(60_000);
   const image = page.locator(".topbar .school-logo");

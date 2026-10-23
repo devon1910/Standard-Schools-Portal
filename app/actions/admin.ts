@@ -14,6 +14,7 @@ import { validateOrigin } from "@/lib/nigeria-locations";
 import { allocateStudentIds, StudentIdSetupRequired } from "@/lib/allocate-student-ids";
 import { studentIdConfigSchema } from "@/lib/student-id";
 import { setPasswordAuditContext } from "@/lib/password-audit";
+import { canPromote, repeatedTarget } from "@/lib/promotion";
 
 const positiveInt = z.coerce.number().int().positive();
 const optionalDate = z.preprocess((value) => (value ? new Date(String(value)) : null), z.date().nullable());
@@ -325,7 +326,7 @@ const promotionSchema = z.object({
   targetSessionId: positiveInt,
   decisions: z.array(z.object({
     enrollmentId: z.string().regex(/^\d+$/),
-    outcome: z.enum(["PROMOTE", "WITHDRAWN", "GRADUATED"]),
+    outcome: z.enum(["PROMOTE", "REPEATED", "WITHDRAWN", "GRADUATED"]),
     targetClassId: positiveInt.optional(),
   })),
 });
@@ -334,23 +335,27 @@ export async function promoteSession(input: z.infer<typeof promotionSchema>) {
   const user = await requireOwner();
   const data = promotionSchema.parse(input);
   if (data.sourceSessionId === data.targetSessionId) throw new Error("Choose a different target session.");
-  const targetClassIds = [...new Set(data.decisions.flatMap((item) => item.targetClassId ? [item.targetClassId] : []))];
-  const validTargets = await db.legacyClass.count({ where: { id: { in: targetClassIds }, schoolId: user.schoolId, sessionId: data.targetSessionId, archivedAt: null } });
-  if (validTargets !== targetClassIds.length) throw new Error("One or more target classes are invalid.");
+  if (new Set(data.decisions.map((item) => item.enrollmentId)).size !== data.decisions.length) throw new Error("A student can have only one promotion decision.");
 
   await db.$transaction(async (tx) => {
+    const sessions = await tx.legacySession.count({ where: { id: { in: [data.sourceSessionId, data.targetSessionId] }, schoolId: user.schoolId } });
+    if (sessions !== 2) throw new Error("Choose valid source and target sessions.");
+    const targetClasses = await tx.legacyClass.findMany({ where: { schoolId: user.schoolId, sessionId: data.targetSessionId, archivedAt: null }, select: { id: true, name: true } });
     for (const decision of data.decisions) {
       const source = await tx.enrollment.findFirst({
-        where: { id: BigInt(decision.enrollmentId), schoolId: user.schoolId, sessionId: data.sourceSessionId },
-        include: { student: true },
+        where: { id: BigInt(decision.enrollmentId), schoolId: user.schoolId, sessionId: data.sourceSessionId, active: true, class: { schoolId: user.schoolId, sessionId: data.sourceSessionId, archivedAt: null } },
+        include: { class: true },
       });
       if (!source) throw new Error("A source enrollment could not be found.");
-      if (decision.outcome === "PROMOTE") {
-        if (!decision.targetClassId) throw new Error("Every promoted student needs a target class.");
+      if (decision.outcome === "PROMOTE" || decision.outcome === "REPEATED") {
+        const targetClassId = decision.outcome === "REPEATED" ? repeatedTarget(source.class.name, targetClasses) : decision.targetClassId;
+        const targetClass = targetClasses.find((item) => item.id === targetClassId);
+        if (!targetClass) throw new Error(decision.outcome === "REPEATED" ? `Create one matching class for ${source.class.name} in the new session before repeating students.` : "Every promoted student needs a valid target class.");
+        if (decision.outcome === "PROMOTE" && !canPromote(source.class.name, targetClass.name)) throw new Error("Students can only be promoted to a higher class. Use Repeated to keep the same class.");
         await tx.enrollment.upsert({
           where: { studentId_sessionId: { studentId: source.studentId, sessionId: data.targetSessionId } },
-          update: { classId: decision.targetClassId, active: true },
-          create: { schoolId: user.schoolId, studentId: source.studentId, sessionId: data.targetSessionId, classId: decision.targetClassId },
+          update: { classId: targetClass.id, active: true },
+          create: { schoolId: user.schoolId, studentId: source.studentId, sessionId: data.targetSessionId, classId: targetClass.id },
         });
         await tx.studentProfile.update({ where: { id: source.studentId }, data: { status: StudentStatus.ACTIVE } });
       } else {

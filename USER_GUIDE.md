@@ -131,8 +131,10 @@ Use **Promotion** when starting a new academic session from an existing one.
 2. Choose **Copy classes from** and enter the **New session name**.
 3. Select **Create and review students**.
 4. For each old class, choose the class students will be promoted into.
-5. Review every student and choose **Promote**, **Left school** or **Graduated**.
+5. Review every student and choose **Promote**, **Repeated**, **Left school** or **Graduated**.
 6. Select **Confirm session promotion**.
+
+The promotion list contains only higher classes. **Repeated** enrolls the student in the same class in the new session. A matching class must exist in the new session. If no higher class is available, choose another outcome or add a higher class in **Academics**.
 
 No student is moved until the final confirmation.
 
