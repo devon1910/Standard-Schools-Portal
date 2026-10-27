@@ -364,7 +364,7 @@ export async function promoteSession(input: z.infer<typeof promotionSchema>) {
         await tx.enrollment.update({ where: { id: source.id }, data: { active: false } });
       }
     }
-  });
+  }, { timeout: 60_000 });
   revalidatePath("/promotion");
   revalidatePath("/students");
   return { success: true };

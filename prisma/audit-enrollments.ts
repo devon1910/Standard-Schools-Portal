@@ -1,7 +1,12 @@
 import { Client } from "pg";
 import { z } from "zod";
 
-const [schoolId, sessionName] = z.tuple([z.coerce.number().int().positive(), z.string().min(1)]).parse(process.argv.slice(2));
+const args = z.union([
+  z.tuple([z.coerce.number().int().positive(), z.string().min(1)]),
+  z.tuple([z.coerce.number().int().positive(), z.literal("--session-id"), z.coerce.number().int().positive()]),
+]).parse(process.argv.slice(2));
+const schoolId = args[0];
+const sessionSelection = args.length === 3 ? args[2] : args[1];
 const client = new Client({ connectionString: process.env.DATABASE_URL, connectionTimeoutMillis: 10_000 });
 
 try {
@@ -11,9 +16,9 @@ try {
   const sessions = await client.query(`
     SELECT s."Id" AS id, s."Name" AS name, school.name AS school
     FROM "Sessions" s JOIN "School" school ON school.id = s."SchoolId"
-    WHERE s."SchoolId" = $1 AND trim(s."Name") = $2
-  `, [schoolId, sessionName]);
-  if (sessions.rows.length !== 1) throw new Error(`Expected one session; found ${sessions.rows.length}. Check the school ID and session name.`);
+    WHERE s."SchoolId" = $1 AND ${args.length === 3 ? 's."Id" = $2' : 'trim(s."Name") = $2'}
+  `, [schoolId, sessionSelection]);
+  if (sessions.rows.length !== 1) throw new Error(`Expected one session; found ${sessions.rows.length}. Check the school and session selection.`);
   const sessionId = sessions.rows[0].id;
   console.log("Session:", sessions.rows[0]);
 

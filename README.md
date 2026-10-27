@@ -95,6 +95,8 @@ Run the read-only enrollment audit with a working `DATABASE_URL` in `.env.local`
 node --env-file=.env.local --import tsx prisma/audit-enrollments.ts 1 2025/2026
 ```
 
+To select an exact session ID, use `node --env-file=.env.local --import tsx prisma/audit-enrollments.ts 1 --session-id 3`.
+
 The audit lists student counts by class, inactive enrollments, archived classes, class and session mismatches, duplicate class names, and legacy rows without linked enrollments. A duplicate admission number can explain an unlinked legacy row because the backfill keeps the newest row. Review the findings before changing records. The audit does not change data.
 
 The backfill checks class, school, and session IDs before writing. It also stops when legacy rows share an admission number but have different names or dates of birth. Review these conflicts before running it again. Existing enrollments are preserved; the backfill does not repair them or recover previously skipped students. Merge existing duplicate classes only after checking their enrollments, scores, reports, and question files.

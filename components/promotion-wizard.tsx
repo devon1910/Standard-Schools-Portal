@@ -24,7 +24,14 @@ export default function PromotionWizard({ sourceSessionId, targetSessionId, sour
     const decisions = sourceClasses.flatMap((sourceClass) => sourceClass.students.map((student) => ({ enrollmentId: student.enrollmentId, outcome: outcomes[student.enrollmentId], targetClassId: outcomes[student.enrollmentId] === "PROMOTE" ? classTargets[sourceClass.id] : undefined })));
     startTransition(async () => {
       try { await promoteSession({ sourceSessionId, targetSessionId, decisions }); await setCurrentSession(targetSessionId); showToast({ type: "success", title: "Session promotion complete", message: `${totals.PROMOTE + totals.REPEATED} student enrollments were saved in the new session.` }); router.push(`/students?session=${targetSessionId}`); router.refresh(); }
-      catch (cause) { const message = cause instanceof Error ? cause.message : "Promotion could not be completed."; setError(message); showToast({ type: "error", title: "Promotion could not be completed", message }); }
+      catch (cause) {
+        const reference = cause instanceof Error && "digest" in cause && typeof cause.digest === "string" ? cause.digest : null;
+        const message = reference
+          ? `The server could not complete this request. Reference: ${reference}. Check the target session before trying again.`
+          : cause instanceof Error ? cause.message : "Promotion could not be completed.";
+        setError(message);
+        showToast({ type: "error", title: "Promotion could not be completed", message });
+      }
     });
   }
 

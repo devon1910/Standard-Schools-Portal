@@ -108,7 +108,7 @@ test("session changes discard stale class filters and promotion uses the selecte
   }
 });
 
-test("promotion offers higher classes and enrolls repeated students in the same class", async ({ page }) => {
+test("promotion offers higher classes and enrolls repeated students even when database writes exceed five seconds", async ({ page }) => {
   test.setTimeout(90_000);
   const source = await db.legacyClass.findFirstOrThrow({ where: { schoolId, name: "JSS 1A" } });
   const lower = await db.legacyClass.create({ data: { schoolId, sessionId: source.sessionId, classTypeId: source.classTypeId, name: "BASIC 5", dateCreated: new Date() } });
@@ -132,9 +132,16 @@ test("promotion offers higher classes and enrolls repeated students in the same 
     const target = await db.legacySession.findFirstOrThrow({ where: { schoolId, name: targetName } });
     const nextClass = await db.legacyClass.findFirstOrThrow({ where: { schoolId, sessionId: target.id, name: "JSS 2A" } });
     expect(await promotion.inputValue()).toBe(String(nextClass.id));
+    // Reproduce remote database latency inside the real promotion transaction.
+    await db.$executeRawUnsafe(`CREATE FUNCTION promotion_delay_${schoolId}() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        IF NEW."schoolId" = ${schoolId} AND NEW."sessionId" = ${target.id} THEN PERFORM pg_sleep(3); END IF;
+        RETURN NEW;
+      END $$`);
+    await db.$executeRawUnsafe(`CREATE TRIGGER promotion_delay_${schoolId} BEFORE INSERT ON "Enrollment" FOR EACH ROW EXECUTE FUNCTION promotion_delay_${schoolId}()`);
     await sourceClass.getByLabel("Outcome for Repeat Student").selectOption("REPEATED");
     await page.getByRole("button", { name: "Confirm session promotion" }).click();
-    await expect(page).toHaveURL(new RegExp(`/students\\?session=${target.id}$`));
+    await expect(page).toHaveURL(new RegExp(`/students\\?session=${target.id}$`), { timeout: 20_000 });
     await expect(page.getByRole("cell").filter({ hasText: "Repeat Student" })).toBeVisible();
     await expect(page.getByRole("cell").filter({ hasText: "Promoted Student" })).toBeVisible();
     const enrolled = await db.enrollment.findMany({ where: { schoolId, studentId: { in: students.map((student) => student.id) } }, include: { class: true } });
@@ -142,6 +149,8 @@ test("promotion offers higher classes and enrolls repeated students in the same 
     expect(enrolled.find((item) => item.studentId === students[0].id && item.sessionId === target.id)?.class.name).toBe("JSS 1A");
     expect(enrolled.find((item) => item.studentId === students[1].id && item.sessionId === target.id)?.class.name).toBe("JSS 2A");
   } finally {
+    await db.$executeRawUnsafe(`DROP TRIGGER IF EXISTS promotion_delay_${schoolId} ON "Enrollment"`);
+    await db.$executeRawUnsafe(`DROP FUNCTION IF EXISTS promotion_delay_${schoolId}()`);
     await db.enrollment.deleteMany({ where: { schoolId, studentId: { in: students.map((student) => student.id) } } });
     await db.studentProfile.deleteMany({ where: { id: { in: students.map((student) => student.id) } } });
     const target = await db.legacySession.findFirst({ where: { schoolId, name: targetName } });
