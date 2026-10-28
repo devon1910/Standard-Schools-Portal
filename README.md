@@ -16,7 +16,7 @@ To request a workspace directly, email [davidsonekpokpobe@gmail.com](mailto:davi
 - Password audit trail in Settings for school owners. Records account creation, password changes, and resets with actor and time. See [Password audit trail](docs/PASSWORD_AUDIT.md).
 - School owners upload logos from their computer in Settings. The application handles signed Cloudinary uploads, verification, replacement, and removal. Owners do not need a Cloudinary URL or account.
 - Permanent student profiles with session-based enrollments and term fee tracking.
-- System-generated student IDs with a school prefix and number width set once in Settings. New records need no admission number. Existing identifiers stay unchanged.
+- Automatic student IDs use the existing year/class/number format by default. Schools can set an optional custom prefix in Settings. Existing identifiers stay unchanged.
 - Transactional bulk student import from Word (.docx), Excel, or CSV, with Word and Excel templates, preview, and validation. Only first name, last name, class, gender, and date of birth are required. Class names match classes in the selected session. Save older .doc files as .docx before importing.
 - Guided session setup and bulk promotion to higher classes, including repeated, left-school and graduated outcomes.
 - Sessions, classes, class categories, subjects, and a signed-upload question bank.

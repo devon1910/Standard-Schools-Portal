@@ -129,6 +129,7 @@ model LegacyClass {
   enrollments  Enrollment[]
   classSubjects ClassSubject[]
 
+  @@unique([id, schoolId, sessionId], map: "Classes_Id_SchoolId_SessionId_key")
   @@index([schoolId, sessionId])
   @@map("Classes")
 }
@@ -242,7 +243,7 @@ model Enrollment {
   student                 StudentProfile @relation(fields: [studentId], references: [id])
   sessionId               Int
   classId                 Int
-  class                   LegacyClass   @relation(fields: [classId], references: [id])
+  class                   LegacyClass   @relation(fields: [classId, schoolId, sessionId], references: [id, schoolId, sessionId], onDelete: Restrict, onUpdate: Restrict, map: "Enrollment_classId_schoolId_sessionId_fkey")
   legacyStudentId         BigInt?        @unique
   firstTermFeePaid        Boolean        @default(false)
   firstTermBalance        Decimal        @default(0) @db.Decimal(18, 2)

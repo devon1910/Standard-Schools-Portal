@@ -25,7 +25,7 @@ type StudentsSearchParams = Promise<{
 export default async function StudentsPage({ searchParams }: { searchParams: StudentsSearchParams }) {
   const user = await requireUser();
   const params = await searchParams;
-  const [sessions, allClasses, school] = await Promise.all([
+  const [sessions, allClasses] = await Promise.all([
     db.legacySession.findMany({
       where: { schoolId: user.schoolId },
       orderBy: { id: "desc" },
@@ -36,7 +36,6 @@ export default async function StudentsPage({ searchParams }: { searchParams: Stu
       orderBy: { name: "asc" },
       select: { id: true, name: true, sessionId: true },
     }),
-    db.school.findUnique({ where: { id: user.schoolId }, select: { studentIdPrefix: true } }),
   ]);
   const sessionId = await getCurrentSessionId(user.schoolId, sessions, params.session);
   const classes = allClasses.filter((item) => item.sessionId === sessionId);
@@ -74,7 +73,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Stu
   const errorMap: Record<string, string> = {
     "admission-exists": "That admission number is already assigned to another student.",
     "invalid-class": "Choose a valid class in the selected session.",
-    "student-id-setup-required": "Ask the school owner to set the student ID format in Settings before adding students.",
+    "invalid-admission": "Check the admission date and class at admission before saving.",
   };
 
   return (
@@ -99,7 +98,6 @@ export default async function StudentsPage({ searchParams }: { searchParams: Stu
       </section>
 
       {params.error && <div className="notice error">{errorMap[params.error] ?? "The student could not be saved."}</div>}
-      {!school?.studentIdPrefix && <div className="notice warning">The school owner must set the permanent student ID format in <Link href="/settings">Settings</Link> before students can be added or imported.</div>}
 
       <form className="filter-bar card">
         <div className="field search">

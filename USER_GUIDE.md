@@ -60,16 +60,18 @@ Owners can manage the academic structure.
 
 Each student has one permanent profile. Their class history is stored separately for each session.
 
-The system generates a student ID when you add or import a student. The school owner must first set the format in **Settings**. New records use only the student ID. Existing identifiers stay the same.
+The system generates a permanent student ID when you add or import a student. The default format is `year/admission-class/number`, for example `2025/B4A/00008`. Setup is not required. The year comes from the admission date, or the selected session if no date is supplied. The class comes from the class at admission, or the selected class. The number has at least five digits. Promotion does not change the ID. Existing identifiers stay the same.
 
-### Set the student ID format (owner)
+Class codes follow the existing admission numbers: `PK` for Pre-Nursery, `KG1` for Nursery 1, `B4A` for Basic 4A, `B7A` for JSS 1A, and `SSS1` for SS 1. The system checks current profiles and old student records before it assigns a number. Numbers can have gaps.
+
+### Set an optional custom prefix (owner)
 
 1. Open **Settings**, then **Student IDs**.
-2. Enter the prefix, number width, and starting number. For example, `ADM`, `4`, and `2` produces `ADM0002`.
+2. Open **Optional custom prefix for future students**. Enter the prefix, number width, and starting number. For example, `ADM`, `4`, and `2` produces `ADM0002`.
 3. Check the preview. Confirm that the format can only be set once.
 4. Select **Save permanent student ID format**.
 
-The prefix and number width are locked after you save. The system increases the number for each new student. It skips identifiers that already exist.
+The prefix and number width are locked after you save. This setting applies to future students. Schools that already have a custom prefix keep that format. The system increases the number for each new student. It skips identifiers that already exist.
 
 ### Import students from Word, Excel, or CSV
 

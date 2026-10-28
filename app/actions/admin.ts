@@ -11,8 +11,8 @@ import { requireOwner, requireUser } from "@/lib/auth";
 import { cloudinary } from "@/lib/cloudinary";
 import { MAX_STUDENT_IMPORT_ROWS, parseImportDate, studentImportRowSchema, type StudentImportRow } from "@/lib/student-import";
 import { validateOrigin } from "@/lib/nigeria-locations";
-import { allocateStudentIds, StudentIdSetupRequired } from "@/lib/allocate-student-ids";
-import { studentIdConfigSchema } from "@/lib/student-id";
+import { allocateStudentIds } from "@/lib/allocate-student-ids";
+import { StudentAdmissionError, studentIdConfigSchema } from "@/lib/student-id";
 import { setPasswordAuditContext } from "@/lib/password-audit";
 import { canPromote, normalizedClassName, repeatedTarget } from "@/lib/promotion";
 
@@ -88,11 +88,14 @@ export async function createStudent(formData: FormData) {
   const origin = validateOrigin(data.stateOfOrigin ?? "", data.lgaOfOrigin ?? "");
   if (origin.error) throw new Error(origin.error);
 
-  const targetClass = await db.legacyClass.findFirst({ where: { id: data.classId, sessionId: data.sessionId, schoolId: user.schoolId, archivedAt: null } });
-  if (!targetClass) redirect("/students?error=invalid-class");
+  const [targetClass, session] = await Promise.all([
+    db.legacyClass.findFirst({ where: { id: data.classId, sessionId: data.sessionId, schoolId: user.schoolId, archivedAt: null } }),
+    db.legacySession.findFirst({ where: { id: data.sessionId, schoolId: user.schoolId } }),
+  ]);
+  if (!targetClass || !session) redirect("/students?error=invalid-class");
   try {
     await db.$transaction(async (tx) => {
-      const [studentId] = await allocateStudentIds(tx, user.schoolId, 1);
+      const [studentId] = await allocateStudentIds(tx, user.schoolId, [{ dateOfAdmission: data.dateOfAdmission, classAtAdmission: data.classAtAdmission, className: targetClass.name, sessionName: session.name }]);
       await tx.studentProfile.create({
         data: {
           schoolId: user.schoolId,
@@ -115,7 +118,7 @@ export async function createStudent(formData: FormData) {
       });
     });
   } catch (error) {
-    if (error instanceof StudentIdSetupRequired) redirect("/students?error=student-id-setup-required");
+    if (error instanceof StudentAdmissionError) redirect("/students?error=invalid-admission");
     throw error;
   }
   revalidatePath("/students");
@@ -142,6 +145,8 @@ export async function importStudents(input: {
   }
 
   const { sessionId, rows } = selection.data;
+  const session = await db.legacySession.findFirst({ where: { id: sessionId, schoolId: user.schoolId } });
+  if (!session) return { success: false, imported: 0, errors: [{ rowNumber: 0, message: "Choose a valid session for this school." }] };
   const classes = await db.legacyClass.findMany({
     where: { sessionId, schoolId: user.schoolId, archivedAt: null },
     select: { id: true, name: true },
@@ -173,7 +178,7 @@ export async function importStudents(input: {
 
   try {
     await db.$transaction(async (tx) => {
-      const ids = await allocateStudentIds(tx, user.schoolId, normalized.length);
+      const ids = await allocateStudentIds(tx, user.schoolId, normalized.map((row) => ({ dateOfAdmission: row.dateOfAdmission, classAtAdmission: row.classAtAdmission, className: row.className, sessionName: session.name })));
       for (const [index, row] of normalized.entries()) {
         await tx.studentProfile.create({
           data: {
@@ -198,7 +203,7 @@ export async function importStudents(input: {
       }
     }, { timeout: 60_000 });
   } catch (error) {
-    if (error instanceof StudentIdSetupRequired) return { success: false, imported: 0, errors: [{ rowNumber: 0, message: error.message }] };
+    if (error instanceof StudentAdmissionError) return { success: false, imported: 0, errors: [{ rowNumber: 0, message: error.message }] };
     throw error;
   }
 

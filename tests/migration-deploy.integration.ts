@@ -7,6 +7,8 @@ import { Client } from "pg";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { setPasswordAuditContext } from "../lib/password-audit";
+import { allocateStudentIds } from "../lib/allocate-student-ids";
+import { recoverSchool1Session3Students, recoveryLegacyIds } from "../prisma/repairs/recover-school1-session3-students";
 
 // Never fall back to DATABASE_URL: these checks create and remove test schemas.
 const testConnectionString = process.env.MIGRATION_TEST_DATABASE_URL;
@@ -15,6 +17,7 @@ if (!testConnectionString || !new URL(testConnectionString).pathname.endsWith("_
 }
 
 const bootstrapName = "20260823_create_legacy_tables";
+const classScopeName = "20261028_enrollment_class_scope";
 const migrationsRoot = path.resolve("prisma/migrations");
 const migrationNames = (await readdir(migrationsRoot, { withFileTypes: true }))
   .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
@@ -259,9 +262,10 @@ try {
     console.log("PASS: tables in another schema require a corrected search_path");
   });
 
-  await withSchema(async (client, url) => {
-    assertSuccess(runMigrations(url));
+  await withSchema(async (client) => {
     const repair = await readFile(path.resolve("prisma/repairs/20261027_school1_session3_class_links.sql"), "utf8");
+    // Reproduce the pre-constraint data that the manual repair was written for.
+    for (const name of migrationNames.filter((name) => name !== classScopeName)) await client.query(await readMigration(name));
     const mappings: [number, number, string, number][] = [
       [1, 87, "Nursery 1A", 15], [2, 90, "Nursery 1B", 14], [4, 91, "Nursery 2A", 15],
       [5, 92, "Nursery 2B", 15], [7, 93, "Nursery 3A", 5], [8, 94, "Nursery 3B", 6],
@@ -300,6 +304,11 @@ try {
     const before = await enrollments();
     const profilesBefore = (await client.query('SELECT * FROM "StudentProfile" ORDER BY id')).rows;
     const legacyBefore = (await client.query('SELECT * FROM "Students" ORDER BY "Id"')).rows;
+
+    await client.query("BEGIN");
+    await assert.rejects(client.query(await readMigration(classScopeName)), /mismatches exist/);
+    await client.query("ROLLBACK");
+    assert.deepEqual(await enrollments(), before, "The new guard must reject existing damage without changing records");
 
     await client.query('UPDATE "Classes" SET "Name"=\'Unreviewed class\' WHERE "Id"=101');
     await assert.rejects(client.query(repair), /mappings have changed/);
@@ -361,6 +370,105 @@ try {
     await client.query("ROLLBACK");
     assert.deepEqual(await enrollments(), after, "Repeating an already completed repair must make no further changes");
     console.log("PASS: 180 class links corrected; identities, legacy rows, fees, and other schools preserved; unsafe or repeated repairs rejected");
+
+    await client.query("BEGIN");
+    await client.query(await readMigration(classScopeName));
+    await client.query("COMMIT");
+    for (const statement of [
+      'UPDATE "Enrollment" SET "classId"=1 WHERE "studentId"=182',
+      'UPDATE "Enrollment" SET "schoolId"=2 WHERE "studentId"=182',
+      'UPDATE "Enrollment" SET "sessionId"=1 WHERE "studentId"=182',
+      'UPDATE "Classes" SET "SessionId"=1 WHERE "Id"=87',
+    ]) await assert.rejects(client.query(statement), { code: "23503" });
+    assert.deepEqual(await enrollments(), after, "The guard must reject invalid class, school, session, and parent-class edits");
+    console.log("PASS: database constraint enforces class/school/session alignment in both directions");
+  });
+
+  await withSchema(async (client, url) => {
+    assertSuccess(runMigrations(url));
+    await client.query(`
+      INSERT INTO "Sessions" ("Id","SchoolId","Name","DateCreated") VALUES (1,1,'2023/2024',now()),(3,1,'2025/2026',now());
+      INSERT INTO "Classes" ("Id","SchoolId","SessionId","Name","ClassTypeId","DateCreated") VALUES
+        (19,1,1,'Basic 4A',1,now()),(101,1,3,'Basic 4A',1,now()),(102,1,3,'BASIC4A',1,now());
+      INSERT INTO "StudentProfile" (id,"schoolId",name,"studentId","admissionNumber","updatedAt") VALUES (1000,1,'Existing student',NULL,'2025/B4A/00001',now());
+    `);
+    await client.query(`INSERT INTO "Students" ("Id","Name","AdmissionNumber","Gender","Dob","Tribe","StateOfOrigin","LGAOfOrigin",
+      "ClassAtAdmission","DateOfAdmission","YearOfAdmission","ParentName","ParentAddress","ParentPhone","ParentReligion",
+      "ClassId","SessionId","SchoolId","IsFirstTermFeePaid","FirstTermBalance","IsSecondTermFeePaid","SecondTermBalance",
+      "IsThirdTermFeePaid","ThirdTermBalance","Balance","DateCreated")
+      SELECT n,'Student ' || n,'2025/B4A/00001','Female','2014-05-12','Tribe','State','LGA','Basic 4A','2025-09-01','2025',
+        'Guardian','Address','Phone','Religion',19,3,1,true,125.25,false,23.50,true,35.75,184.50,now()
+      FROM unnest($1::bigint[]) n`, [recoveryLegacyIds.map(String)]);
+    const schema = (await client.query("SELECT current_schema()")).rows[0].current_schema;
+    const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }, { schema }) });
+    try {
+      const existing = await prisma.studentProfile.findUniqueOrThrow({ where: { id: BigInt(1000) } });
+      const legacy = await prisma.legacyStudent.findMany({ orderBy: { id: "asc" } });
+      await assert.rejects(recoverSchool1Session3Students(prisma), /one matching class/);
+      await client.query('UPDATE "Classes" SET "Name"=\'Other class\' WHERE "Id"=102');
+      assert.equal(await prisma.studentProfile.count(), 1);
+      assert.equal(await prisma.enrollment.count(), 0);
+      await client.query(`CREATE FUNCTION recovery_failure() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN IF NEW.name='Student 120' THEN RAISE EXCEPTION 'recovery rollback test'; END IF; RETURN NEW; END $$;
+        CREATE TRIGGER recovery_failure BEFORE INSERT ON "StudentProfile" FOR EACH ROW EXECUTE FUNCTION recovery_failure();`);
+      await assert.rejects(recoverSchool1Session3Students(prisma), /recovery rollback test/);
+      assert.equal(await prisma.studentProfile.count(), 1);
+      assert.equal(await prisma.enrollment.count(), 0);
+      assert.equal((await prisma.school.findUniqueOrThrow({ where: { id: 1 } })).nextStudentNumber, 1, "A failed recovery must roll back the ID counter");
+      await client.query('ALTER TABLE "StudentProfile" DISABLE TRIGGER recovery_failure');
+      const result = await recoverSchool1Session3Students(prisma);
+      assert.equal(result.created, 26);
+      assert.equal(result.alreadyLinked, 0);
+      const recovered = await prisma.enrollment.findMany({ include: { student: true }, orderBy: { legacyStudentId: "asc" } });
+      assert.equal(recovered.length, 26);
+      assert.equal(new Set(recovered.map((item) => item.studentId.toString())).size, 26);
+      assert.equal(new Set(recovered.map((item) => item.student.studentId)).size, 26);
+      for (const [index, item] of recovered.entries()) {
+        assert.equal(item.student.name, `Student ${legacy[index].id}`);
+        assert.equal(item.student.admissionNumber, null);
+        assert.equal(item.student.studentId, `2025/B4A/${String(index + 2).padStart(5, "0")}`);
+        assert.equal(item.classId, 101);
+        assert.equal(item.schoolId, 1);
+        assert.equal(item.sessionId, 3);
+        assert.equal(item.legacyStudentId, legacy[index].id);
+        assert.equal(item.active, true);
+        assert.equal(item.firstTermFeePaid, true);
+        assert.equal(item.firstTermBalance.toFixed(2), "125.25");
+        assert.equal(item.secondTermFeePaid, false);
+        assert.equal(item.secondTermBalance.toFixed(2), "23.50");
+        assert.equal(item.thirdTermFeePaid, true);
+        assert.equal(item.thirdTermBalance.toFixed(2), "35.75");
+        assert.equal(item.student.dob?.toISOString(), "2014-05-12T00:00:00.000Z");
+        assert.equal(item.student.parentName, "Guardian");
+        assert.equal(item.student.parentAddress, "Address");
+        assert.equal(item.student.parentPhone, "Phone");
+        assert.equal(item.student.parentReligion, "Religion");
+        assert.equal(item.student.gender, "Female");
+        assert.equal(item.student.tribe, "Tribe");
+        assert.equal(item.student.stateOfOrigin, "State");
+        assert.equal(item.student.lgaOfOrigin, "LGA");
+        assert.equal(item.student.classAtAdmission, "Basic 4A");
+        assert.equal(item.student.dateOfAdmission?.toISOString(), "2025-09-01T00:00:00.000Z");
+        assert.equal(item.student.yearOfAdmission, "2025");
+      }
+      assert.deepEqual(await prisma.studentProfile.findUniqueOrThrow({ where: { id: BigInt(1000) } }), existing);
+      assert.deepEqual(await prisma.legacyStudent.findMany({ orderBy: { id: "asc" } }), legacy);
+      const counter = (await prisma.school.findUniqueOrThrow({ where: { id: 1 } })).nextStudentNumber;
+      assert.equal(counter, 28);
+      assert.equal((await recoverSchool1Session3Students(prisma)).created, 0);
+      assert.equal(await prisma.studentProfile.count(), 27);
+      assert.equal(await prisma.enrollment.count(), 26);
+      assert.equal((await prisma.school.findUniqueOrThrow({ where: { id: 1 } })).nextStudentNumber, counter);
+      const concurrent = await Promise.all([1, 2].map((number) => prisma.$transaction(async (tx) => {
+        const [studentId] = await allocateStudentIds(tx, 1, [{ className: "Basic 4A", sessionName: "2025/2026" }]);
+        await tx.studentProfile.create({ data: { schoolId: 1, name: `Concurrent ${number}`, studentId } });
+        return studentId;
+      })));
+      assert.deepEqual(concurrent.sort(), ["2025/B4A/00028", "2025/B4A/00029"]);
+      await prisma.enrollment.updateMany({ where: { schoolId: 1 }, data: { classId: 102 } });
+      assert.deepEqual((await prisma.studentProfile.findMany({ where: { enrollments: { some: {} } }, orderBy: { id: "asc" }, select: { studentId: true } })).map((item) => item.studentId).sort(), result.students.map((item) => item.studentId).sort(), "Changing class must preserve every permanent ID");
+      console.log("PASS: 26 distinct students restored with admission IDs and original details/fees; rollback, repeated recovery, concurrent allocation, and fixed IDs verified");
+    } finally { await prisma.$disconnect(); }
   });
 } finally {
   await admin.end();

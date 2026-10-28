@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ classes: vi.fn(), create: vi.fn(), createMany: vi.fn(), session: vi.fn(), redirect: vi.fn(), transaction: vi.fn(), profile: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ requireOwner: vi.fn().mockResolvedValue({ schoolId: 1, id: "owner" }), requireUser: vi.fn().mockResolvedValue({ schoolId: 1, id: "owner" }) }));
-vi.mock("@/lib/allocate-student-ids", () => ({ allocateStudentIds: vi.fn().mockResolvedValue(["SHS001"]), StudentIdSetupRequired: class extends Error {} }));
+vi.mock("@/lib/allocate-student-ids", () => ({ allocateStudentIds: vi.fn().mockResolvedValue(["SHS001"]) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }));
 vi.mock("@/lib/db", () => ({ db: {

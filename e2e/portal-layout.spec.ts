@@ -36,7 +36,7 @@ test.beforeAll(async ({ baseURL }) => {
   await new Promise<void>((resolve, reject) => { cloudinaryServer.once("error", reject); cloudinaryServer.listen(55439, "127.0.0.1", resolve); });
   db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
   schoolId = 900_000 + Math.floor(Math.random() * 100_000);
-  await db.school.create({ data: { id: schoolId, name: "Standard International School", shortName: username, logoUrl, studentIdPrefix: "UI", studentIdDigits: 3 } });
+  await db.school.create({ data: { id: schoolId, name: "Standard International School", shortName: username, logoUrl } });
   await db.portalUser.create({ data: { username, displayName: "Layout Owner", schoolId, role: "OWNER", passwordHash: await hash(password), mustChangePassword: false } });
   const empty = await db.legacySession.create({ data: { schoolId, name: "2024/2025", dateCreated: new Date() } });
   emptySessionId = empty.id;
@@ -214,6 +214,29 @@ test("owners can upload, replace, and remove a logo without entering a URL", asy
   await page.route("https://school-logos.example.test/broken.svg", (route) => route.fulfill({ status: 404, body: "Missing" }));
   await page.goto("/dashboard");
   await expect(image).toHaveAttribute("src", "/brand/mark-mono-black.svg");
+});
+
+test("students can be added and imported without ID setup", async ({ page }) => {
+  const target = await db.legacyClass.findFirstOrThrow({ where: { schoolId, name: "JSS 1A" } });
+  try {
+    await page.goto(`/students?session=${target.sessionId}`);
+    await page.getByText("Add student", { exact: true }).click();
+    const form = page.locator('form').filter({ has: page.locator('input[name="name"]') });
+    await form.locator('input[name="name"]').fill("Default ID Student");
+    await form.locator('select[name="classId"]').selectOption(String(target.id));
+    await form.getByRole("button", { name: "Save student", exact: true }).click();
+    await expect(page.getByRole("cell").filter({ hasText: "Default ID Student" })).toBeVisible();
+    await expect.poll(async () => (await db.studentProfile.findFirst({ where: { schoolId, name: "Default ID Student" } }))?.studentId).toBe("2025/B7A/00001");
+    await page.getByText("Import students", { exact: true }).click();
+    await page.locator('input[type="file"]').setInputFiles({ name: "students.csv", mimeType: "text/csv", buffer: Buffer.from("First Name,Last Name,Class,Gender,Date of Birth\nDefault,Import,JSS 1A,Female,2014-05-12") });
+    await page.getByRole("button", { name: "Import 1 student", exact: true }).click();
+    await expect.poll(async () => (await db.studentProfile.findFirst({ where: { schoolId, name: "Default Import" } }))?.studentId).toBe("2025/B7A/00002");
+    expect((await db.school.findUniqueOrThrow({ where: { id: schoolId } })).studentIdPrefix).toBeNull();
+  } finally {
+    const students = await db.studentProfile.findMany({ where: { schoolId, name: { in: ["Default ID Student", "Default Import"] } } });
+    await db.enrollment.deleteMany({ where: { schoolId, studentId: { in: students.map(s => s.id) } } });
+    await db.studentProfile.deleteMany({ where: { schoolId, id: { in: students.map(s => s.id) } } });
+  }
 });
 
 test("import panels keep the heading above the form and contain long class lists", async ({ page }, testInfo) => {

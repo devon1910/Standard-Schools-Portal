@@ -10,7 +10,7 @@ export default function StudentIdSettingsForm() {
   const [digits, setDigits] = useState(3);
   const [start, setStart] = useState(1);
   return <form action={action} className="form-grid">
-    <p className="notice warning field full">You can set this format only once. The prefix and number width cannot change after you save. Check them before you confirm.</p>
+    <p className="notice warning field full">The year/admission-class/number format works without setup. Only use this form if you want a custom prefix for future students. You can set a custom format only once. The prefix and number width cannot change after you save. Check them before you confirm.</p>
     {state.error && <p className="notice error field full" role="alert">{state.error}</p>}
     <label className="field">Prefix<input className="input" name="prefix" value={prefix} onChange={(event) => setPrefix(event.target.value.toUpperCase())} pattern="[A-Za-z][A-Za-z-]{0,19}" maxLength={20} required /></label>
     <label className="field">Number width<input className="input" name="digits" type="number" min={1} max={10} value={digits} onChange={(event) => setDigits(Number(event.target.value))} required /></label>

@@ -1,14 +1,18 @@
 # Student data repair: school 1, session 3
 
-Status: prepared for review. No live repair has been applied.
+Status: class-link repair applied to production on 2026-10-28 at 09:18 UTC, after user approval. The database guard was applied at 09:41 UTC. All 26 approved separate students were restored at 10:49 UTC. A new connection confirmed that every pre-existing profile, enrollment, and legacy row remained unchanged. Production now has 510 profiles, 511 enrollments, and 510 legacy rows. Basic 4A has 21 active students; Basic 4B has 12. No records were deleted.
 
-The read-only audit found 180 enrollments for Standard High School, 2025/2026, linked to classes from session 1. Each has one matching class in session 3. No scores, reports, or family accounts were linked to these affected enrollments at the time of review.
+The class-link transaction corrected exactly 180 class links. Before commit, row comparisons confirmed that enrollment IDs, student profiles, fee values, statuses, scores, reports, and legacy rows were preserved. A new connection then verified zero enrollment/class mismatches, 16 active enrollments in Basic 4A, and 11 in Basic 4B. At that stage, whole-database totals were 485 enrollments, 484 profiles, and 510 legacy rows. The later recovery added the 26 approved separate students. No records were deleted.
+
+A fresh full backup was created before the repair: `.artifacts/school-database-before-approved-repair-2026-10-28T09-16-04-654Z.dump.local`. The execution receipt and post-commit audit are `.artifacts/enrollment-class-repair-applied.local` and `.artifacts/enrollment-class-repair-post-audit.local`. These private files are ignored by Git.
+
+The pre-repair read-only audit found 180 enrollments for Standard High School, 2025/2026, linked to classes from session 1. Each had one matching class in session 3. No scores, reports, or family accounts were linked to these affected enrollments at the time of review.
 
 ## 1. Correct the class links
 
-Take a database backup before applying the manual SQL in [the repair file](../prisma/repairs/20261027_school1_session3_class_links.sql). Run it during a short pause in student entry, promotion, and score/report entry. It briefly locks the class, enrollment, score, and report tables against writes.
+The manual SQL in [the repair file](../prisma/repairs/20261027_school1_session3_class_links.sql) has now been applied. Do not rerun it on this database. Its safeguards reject an already completed repair. The instructions below record the approved procedure: take a fresh backup and briefly pause student entry, promotion, and score/report entry. The transaction locks the class, enrollment, score, and report tables against writes.
 
-Preparation in this workspace is complete: a full database backup was saved to an ignored local archive and restored into a disposable local database. The repair was tested on that copy. It corrected 180 links while preserving all 485 enrollments, 484 profiles, and 510 legacy rows. These are whole-database totals, not just session 3 totals. Production has not been changed.
+During preparation, a full database backup was saved to an ignored local archive and restored into a disposable local database. The repair was tested on that copy. It corrected 180 links while preserving all 485 enrollments, 484 profiles, and 510 legacy rows. These are whole-database totals, not just session 3 totals. Production remained unchanged until the approved application recorded above.
 
 Private local files are `.artifacts/school-database-backup-2026-10-27T13-44-54-131Z.dump.local`, `.artifacts/enrollment-class-repair-backup.local`, and `.artifacts/student-recovery-review.local`. They are ignored by Git. The archive is a full backup; the JSON enrollment export alone is not. Restore backups into a separate database for recovery review; do not replace the live database and discard newer entries.
 
@@ -44,20 +48,34 @@ node --env-file=.env.local --import tsx prisma/audit-enrollments.ts 1 --session-
 
 Acceptance: 180 links corrected; enrollment and profile counts unchanged; no class/session mismatch in the session; Basic 4A shows 16 existing enrollments and Basic 4B shows 11.
 
-## 2. Recover unlinked legacy records after identity review
+## 2. Restore the 26 approved separate students
 
 There are 26 unlinked legacy rows in this session. None has an exact name-and-date-of-birth match in the school's current profiles. Their class mappings are unambiguous. Shared admission numbers must not be treated as proof that these are the same student.
 
-Review the original names, dates of birth, and admission records with the admin. Preserve every original `Students` row. For each confirmed separate student, create a separate profile and a session 3 enrollment linked through `legacyStudentId`. Copy that student's personal details and term fee values from the original row. Do not overwrite another profile or merge students to satisfy the admission-number uniqueness rule.
+The user approved treating every row as a separate student. The recovery script preserves every original `Students` row and creates a separate profile and session 3 enrollment linked through `legacyStudentId`. It copies the original personal details and all three terms' fee values. It never overwrites another profile or merges students to satisfy the admission-number uniqueness rule.
 
-School 1 has not configured its generated student ID format. Set that format in Settings before assigning new IDs. Where an old admission number is already owned by a different student, retain it in the preserved legacy row; use the generated student ID for the new profile and leave its conflicting `admissionNumber` unset pending admin review.
+The recovery script is `prisma/repairs/recover-school1-session3-students.ts`. It checks the exact 26 approved legacy IDs, requires one target class with the same name and category, and uses the existing student ID allocator. All inserts and the ID counter update share one transaction. Invalid admission details, ambiguous classes, or a partial failure cause rollback. Repeating a completed recovery does not create additional profiles or advance the ID counter.
 
-The Basic 4 recovery candidates are legacy IDs 65, 67, 425, 426, and 492 for 4A, and 427 for 4B. If the admin confirms all six as separate students, the expected counts become 21 in 4A and 12 in 4B. Do not reimport the entire class: that creates additional profiles for students already present.
+The recovery passed on a local restore of the fresh production backup with the default admission ID format. It added 26 profiles and enrollments while preserving all existing profile, enrollment, and legacy data. The local test counts became 510 profiles, 511 enrollments, and 510 unchanged legacy rows, with Basic 4A at 21 and Basic 4B at 12. The verification receipt is `.artifacts/student-recovery-clone-verification.local`.
+
+The full backup manifest is `.artifacts/student-recovery-final-backup.local`. It records the archive path and SHA-256 hash. The production execution and separate post-commit verification receipts are `.artifacts/student-recovery-applied.local` and `.artifacts/student-recovery-post-audit.local`. All are private local files ignored by Git. Production writes and preservation checks shared one transaction. Before commit, the checks confirmed zero class/session mismatches and zero unlinked session 3 legacy rows.
+
+This is a one-off recovery, not an ongoing sync. Do not run it again after the admin intentionally deletes restored duplicates, because their preserved legacy rows would become recovery candidates again.
+
+The command below records the completed recovery. Do not rerun it after intentional admin deletions:
+
+```powershell
+node --env-file=.env.local --import tsx prisma/repairs/recover-school1-session3-students.ts --apply
+```
+
+School 1 uses the existing `year/admission-class/number` format by default. No custom prefix was set. New numbers have at least five digits. Allocation reserves all current profile identifiers and legacy admission numbers, including recognizable class-code and padding variations. The stored school counter acts as a floor to prevent reuse after deletion; numbers can have gaps. Recovery takes the year and class code from a valid original admission number before other legacy metadata, because some dates and class-at-admission fields disagree. It preserves those original fields. Where the old admission number belongs to a different student, it remains in the preserved legacy row; the new profile has a unique generated student ID and its conflicting `admissionNumber` remains unset. Promotion does not change IDs. Existing configured custom prefixes continue to work for other schools.
+
+The Basic 4 recovery rows are legacy IDs 65, 67, 425, 426, and 492 for 4A, and 427 for 4B. The verified counts after recovery are 21 in 4A and 12 in 4B. Do not reimport the entire class: that creates additional profiles for students already present. Deploy the allocator and form changes for future student entry; the production data recovery is already complete.
 
 ## 3. Prevent recurrence
 
 Keep the backfill checks that reject class/session mismatches and conflicting identities. Do not rerun the old backfill to repair this data.
 
-After correcting existing links, add a database foreign key that requires the enrollment's class, school, and session to match the same class row. This needs a unique key on `Classes(Id, SchoolId, SessionId)`. Check all schools before validating that constraint. The global read-only audit currently found these 180 enrollments as the only class/school/session mismatches.
+The validated production foreign key `Enrollment_classId_schoolId_sessionId_fkey` now requires the enrollment's class, school, and session to match the same class row. It uses a unique index on `Classes(Id, SchoolId, SessionId)` and rejects conflicting parent-class edits. Migration `20261028_enrollment_class_scope` applied successfully after confirming zero mismatches across all schools. Before/after hashes confirmed that enrollment, profile, legacy, class, score, and report rows were unchanged by this migration. Its receipt is `.artifacts/enrollment-class-scope-guard-applied.local`.
 
 Keep `StudentProfile` and `Enrollment` as the application's current data source. Retain `Students` for migration evidence and recovery; do not add writes to both designs.
