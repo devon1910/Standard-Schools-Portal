@@ -6,6 +6,7 @@ export function normalizedClassName(name: string) {
 
 function classPosition(name: string) {
   const normalized = normalizedClassName(name);
+  if (normalized === "PRENURSERY") return { level: -3, stream: "" };
   const match = /^(NURSERY|KINDERGARTEN|KG|PRIMARY|PRY|BASIC|JSS|SSS|SS)(\d+)([A-Z]*)$/.exec(normalized);
   if (!match) return null;
   const [, stage, number, stream] = match;

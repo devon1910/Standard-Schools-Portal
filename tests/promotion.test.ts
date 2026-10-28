@@ -33,6 +33,13 @@ describe("promotion class order", () => {
     expect(suggestedPromotionTarget("SSS3", targets)).toBeUndefined();
   });
 
+  it("promotes the school's Pre-Nursery class to Nursery 1 and excludes the same level", () => {
+    const nurseryClasses = [{ id: 1, name: "Pre-Nursery " }, { id: 2, name: "Nursery 1A" }, { id: 3, name: "Nursery 1B" }];
+    expect(promotionTargets("Pre-Nursery", nurseryClasses).map((item) => item.id)).toEqual([2, 3]);
+    expect(suggestedPromotionTarget("Pre-Nursery", nurseryClasses)).toBe(2);
+    expect(canPromote("Nursery 1A", "Pre-Nursery")).toBe(false);
+  });
+
   it("matches repeats across spacing and case but rejects ambiguous matching classes", () => {
     expect(repeatedTarget(" jss 1 a ", targets)).toBe(2);
     expect(repeatedTarget("JSS1B", targets)).toBeUndefined();

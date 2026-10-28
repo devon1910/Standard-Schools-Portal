@@ -258,6 +258,110 @@ try {
     }
     console.log("PASS: tables in another schema require a corrected search_path");
   });
+
+  await withSchema(async (client, url) => {
+    assertSuccess(runMigrations(url));
+    const repair = await readFile(path.resolve("prisma/repairs/20261027_school1_session3_class_links.sql"), "utf8");
+    const mappings: [number, number, string, number][] = [
+      [1, 87, "Nursery 1A", 15], [2, 90, "Nursery 1B", 14], [4, 91, "Nursery 2A", 15],
+      [5, 92, "Nursery 2B", 15], [7, 93, "Nursery 3A", 5], [8, 94, "Nursery 3B", 6],
+      [10, 95, "Basic 1A", 12], [11, 96, "Basic 1B", 10], [13, 97, "Basic 2A", 9],
+      [14, 98, "Basic 2B", 11], [16, 99, "Basic 3A", 16], [19, 101, "Basic 4A", 16],
+      [20, 102, "Basic 4B", 11], [23, 103, "Basic 5B", 14], [86, 88, "Pre-Nursery", 11],
+    ];
+    await client.query(`
+      INSERT INTO "Sessions" ("Id", "SchoolId", "Name", "DateCreated") VALUES
+        (1,1,'2023/2024',now()), (3,1,'2025/2026',now()), (4,2,'2025/2026',now());
+      INSERT INTO "StudentProfile" (id,"schoolId",name,"updatedAt")
+        SELECT n,1,'Fixture ' || n,now() FROM generate_series(1,180) n;
+      INSERT INTO "StudentProfile" (id,"schoolId",name,"updatedAt") VALUES
+        (181,2,'Other school',now()), (182,1,'Already correct',now()), (183,1,'Rollback boundary',now());
+    `);
+    let firstStudent = 1;
+    for (const [source, target, name, count] of mappings) {
+      await client.query(`INSERT INTO "Classes" ("Id","SchoolId","SessionId","Name","ClassTypeId","DateCreated")
+        VALUES ($1,1,1,$3,1,now()),($2,1,3,$3,1,now())`, [source, target, name]);
+      await client.query(`INSERT INTO "Enrollment" ("schoolId","studentId","sessionId","classId","firstTermBalance","updatedAt")
+        SELECT 1,n,3,$1,123.45,now() FROM generate_series($2::int,$3::int) n`, [source, firstStudent, firstStudent + count - 1]);
+      firstStudent += count;
+    }
+    await client.query(`
+      INSERT INTO "Classes" ("Id","SchoolId","SessionId","Name","ClassTypeId","DateCreated") VALUES
+        (1001,2,4,'Other school class',1,now()), (999,1,1,'Unmapped class',1,now());
+      INSERT INTO "Enrollment" ("schoolId","studentId","sessionId","classId","updatedAt") VALUES
+        (2,181,4,1001,now()),(1,182,3,87,now()),(1,183,3,87,now()),(1,1,1,1,now());
+      INSERT INTO "Students" ("Id","Name","AdmissionNumber","Gender","Dob","Tribe","StateOfOrigin","LGAOfOrigin",
+        "ClassAtAdmission","DateOfAdmission","YearOfAdmission","ParentName","ParentAddress","ParentPhone","ParentReligion",
+        "ClassId","SessionId","SchoolId","IsFirstTermFeePaid","FirstTermBalance","IsSecondTermFeePaid","SecondTermBalance",
+        "IsThirdTermFeePaid","ThirdTermBalance","Balance","DateCreated")
+      VALUES (84,'Preserve legacy','OLD/001','Female','2014-05-12','','','','Basic 4A',now(),'2025','','','','',19,3,1,false,125,false,0,false,0,125,now());
+    `);
+    const enrollments = async () => (await client.query('SELECT * FROM "Enrollment" ORDER BY id')).rows;
+    const before = await enrollments();
+    const profilesBefore = (await client.query('SELECT * FROM "StudentProfile" ORDER BY id')).rows;
+    const legacyBefore = (await client.query('SELECT * FROM "Students" ORDER BY "Id"')).rows;
+
+    await client.query('UPDATE "Classes" SET "Name"=\'Unreviewed class\' WHERE "Id"=101');
+    await assert.rejects(client.query(repair), /mappings have changed/);
+    await client.query("ROLLBACK");
+    assert.deepEqual(await enrollments(), before, "A failed mapping check must change no enrollment");
+    await client.query('UPDATE "Classes" SET "Name"=\'Basic 4A\' WHERE "Id"=101');
+
+    await client.query('UPDATE "Classes" SET "ClassTypeId"=999 WHERE "Id"=101');
+    await assert.rejects(client.query(repair), /mappings have changed/);
+    await client.query("ROLLBACK");
+    assert.deepEqual(await enrollments(), before, "Matching names cannot override a different class category");
+    await client.query('UPDATE "Classes" SET "ClassTypeId"=1 WHERE "Id"=101');
+
+    await client.query('UPDATE "Classes" SET "SessionId"=3,"Name"=\'BASIC4A\' WHERE "Id"=999');
+    await assert.rejects(client.query(repair), /mappings have changed/);
+    await client.query("ROLLBACK");
+    assert.deepEqual(await enrollments(), before, "Ambiguous target classes must stop the repair");
+    await client.query('UPDATE "Classes" SET "SessionId"=1,"Name"=\'Unmapped class\' WHERE "Id"=999');
+
+    await client.query('UPDATE "Enrollment" SET "classId"=20 WHERE "studentId"=71');
+    const staleCounts = await enrollments();
+    await assert.rejects(client.query(repair), /Enrollment counts differ/);
+    await client.query("ROLLBACK");
+    assert.deepEqual(await enrollments(), staleCounts, "A changed class count must stop the repair before writes");
+    await client.query('UPDATE "Enrollment" SET "classId"=10 WHERE "studentId"=71');
+
+    const reportId = (await client.query(`INSERT INTO "TermReport" ("schoolId","enrollmentId","termId","updatedAt")
+      SELECT 1,id,1,now() FROM "Enrollment" WHERE "studentId"=1 RETURNING id`)).rows[0].id;
+    await assert.rejects(client.query(repair), /now have scores or reports/);
+    await client.query("ROLLBACK");
+    assert.deepEqual(await enrollments(), before, "New report data must stop the repair before it writes");
+    await client.query('UPDATE "TermReport" SET "enrollmentId"=(SELECT id FROM "Enrollment" WHERE "studentId"=182) WHERE id=$1', [reportId]);
+
+    await client.query('UPDATE "Enrollment" SET "classId"=999 WHERE "studentId"=183');
+    const beforePostcheckFailure = await enrollments();
+    await assert.rejects(client.query(repair), /Class\/session mismatches remain/);
+    await client.query("ROLLBACK");
+    assert.deepEqual(await enrollments(), beforePostcheckFailure, "A post-update failure must roll back all 180 changes, including timestamps");
+    await client.query('UPDATE "Enrollment" SET "classId"=87 WHERE "studentId"=183');
+
+    await client.query(repair);
+    const after = await enrollments();
+    const classMap = new Map(mappings.map(([source, target]) => [source, target]));
+    assert.equal(after.length, before.length, "No enrollment may be added or removed");
+    let changed = 0;
+    for (const [index, row] of after.entries()) {
+      const original = before[index];
+      const target = original.schoolId === 1 && original.sessionId === 3 ? classMap.get(original.classId) : undefined;
+      assert.equal(row.classId, target ?? original.classId);
+      if (target) changed++;
+      assert.deepEqual({ ...row, classId: original.classId, updatedAt: original.updatedAt }, original, "IDs, identities, fees, and status must be preserved");
+    }
+    assert.equal(changed, 180);
+    assert.equal(after.filter((row) => row.schoolId === 1 && row.sessionId === 3 && row.classId === 101).length, 16);
+    assert.equal(after.filter((row) => row.schoolId === 1 && row.sessionId === 3 && row.classId === 102).length, 11);
+    assert.deepEqual((await client.query('SELECT * FROM "StudentProfile" ORDER BY id')).rows, profilesBefore);
+    assert.deepEqual((await client.query('SELECT * FROM "Students" ORDER BY "Id"')).rows, legacyBefore);
+    await assert.rejects(client.query(repair), /Enrollment counts differ/);
+    await client.query("ROLLBACK");
+    assert.deepEqual(await enrollments(), after, "Repeating an already completed repair must make no further changes");
+    console.log("PASS: 180 class links corrected; identities, legacy rows, fees, and other schools preserved; unsafe or repeated repairs rejected");
+  });
 } finally {
   await admin.end();
 }
