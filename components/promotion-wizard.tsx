@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { promoteSession } from "@/app/actions/admin";
 import { setCurrentSession } from "@/app/actions/session";
 import { showToast } from "@/components/toast";
-import { promotionTargets, repeatedTarget, suggestedPromotionTarget } from "@/lib/promotion";
+import { promotionTargets, repeatedTarget } from "@/lib/promotion";
 
 type SourceClass = { id: number; name: string; students: Array<{ enrollmentId: string; name: string; studentId: string | null }> };
 type TargetClass = { id: number; name: string };
@@ -15,7 +15,7 @@ export default function PromotionWizard({ sourceSessionId, targetSessionId, sour
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
-  const [classTargets, setClassTargets] = useState<Record<number, number | undefined>>(() => Object.fromEntries(sourceClasses.map((item) => [item.id, suggestedPromotionTarget(item.name, targetClasses)])));
+  const [classTargets, setClassTargets] = useState<Record<number, number | undefined>>({});
   const [outcomes, setOutcomes] = useState<Record<string, Outcome>>(() => Object.fromEntries(sourceClasses.flatMap((item) => item.students.map((student) => [student.enrollmentId, "PROMOTE"]))));
   const totals = useMemo(() => Object.values(outcomes).reduce((value, outcome) => ({ ...value, [outcome]: value[outcome] + 1 }), { PROMOTE: 0, REPEATED: 0, WITHDRAWN: 0, GRADUATED: 0 }), [outcomes]);
 
@@ -41,7 +41,7 @@ export default function PromotionWizard({ sourceSessionId, targetSessionId, sour
 
   return <section className="card card-pad">
     {error && <div className="notice error">{error}</div>}
-    <div className="notice info">Promotion moves students to a higher class. Repeated keeps the same class in the new session. Students who leave school remain in history.</div>
+    <div className="notice info">Choose the destination for every class. Promotion moves students to a higher class. Repeated keeps the same class in the new session. Students who leave school remain in history.</div>
     {sourceClasses.map((sourceClass) => {
       const targets = promotionTargets(sourceClass.name, targetClasses);
       const repeatClassId = repeatedTarget(sourceClass.name, targetClasses);
@@ -66,6 +66,10 @@ export default function PromotionWizard({ sourceSessionId, targetSessionId, sour
         </div>)}</div>
       </div>;
     })}
+    <div className="notice warning">
+      <strong>Check the promotion route before you confirm.</strong>
+      <ul>{sourceClasses.filter((item) => item.students.some((student) => outcomes[student.enrollmentId] === "PROMOTE")).map((sourceClass) => <li key={sourceClass.id}>{sourceClass.name} → {targetClasses.find((item) => item.id === classTargets[sourceClass.id])?.name ?? "Choose a destination"}</li>)}</ul>
+    </div>
     <footer className="page-header" style={{ margin: "20px 0 0" }}>
       <p><strong>{totals.PROMOTE}</strong> promoted · <strong>{totals.REPEATED}</strong> repeated · <strong>{totals.WITHDRAWN}</strong> left · <strong>{totals.GRADUATED}</strong> graduated</p>
       <button className="button button-primary" aria-busy={pending} disabled={pending || invalidSelection || !Object.keys(outcomes).length} onClick={submit}>{pending ? "Creating enrollments..." : "Confirm session promotion"}</button>

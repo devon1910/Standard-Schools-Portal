@@ -54,6 +54,84 @@ export async function createClass(formData: FormData) {
   revalidatePath("/academics");
 }
 
+export async function updateClassTeacher(formData: FormData) {
+  const user = await requireOwner();
+  const data = z.object({
+    classId: positiveInt,
+    classTeacher: z.string().trim().max(200),
+  }).parse(Object.fromEntries(formData));
+  const nextTeacher = data.classTeacher || null;
+
+  await db.$transaction(async (tx) => {
+    const existing = await tx.legacyClass.findFirst({
+      where: { id: data.classId, schoolId: user.schoolId, archivedAt: null },
+      select: { id: true, classTeacher: true },
+    });
+    if (!existing) throw new Error("Class not found.");
+    if (existing.classTeacher === nextTeacher) return;
+    await tx.classTeacherChange.create({ data: {
+      schoolId: user.schoolId,
+      classId: existing.id,
+      previousTeacher: existing.classTeacher,
+      newTeacher: nextTeacher,
+      changedById: user.id,
+      changedByName: user.name,
+    } });
+    await tx.legacyClass.update({
+      where: { id: existing.id },
+      data: { classTeacher: nextTeacher, dateModified: new Date(), modifiedBy: user.id },
+    });
+  });
+  revalidatePath("/academics");
+  revalidatePath("/reports/print");
+}
+
+export async function transferStudents(formData: FormData) {
+  const user = await requireOwner();
+  const data = z.object({
+    sessionId: positiveInt,
+    targetClassId: positiveInt,
+    enrollmentIds: z.array(z.string().regex(/^\d+$/)).min(1).max(200),
+  }).parse({
+    sessionId: formData.get("sessionId"),
+    targetClassId: formData.get("targetClassId"),
+    enrollmentIds: formData.getAll("enrollmentIds"),
+  });
+  if (new Set(data.enrollmentIds).size !== data.enrollmentIds.length) throw new Error("Select each student once.");
+  const enrollmentIds = data.enrollmentIds.map(BigInt);
+
+  await db.$transaction(async (tx) => {
+    const targetClass = await tx.legacyClass.findFirst({
+      where: { id: data.targetClassId, schoolId: user.schoolId, sessionId: data.sessionId, archivedAt: null },
+      select: { id: true },
+    });
+    if (!targetClass) throw new Error("Choose a valid destination class in this session.");
+    const enrollments = await tx.enrollment.findMany({
+      where: { id: { in: enrollmentIds }, schoolId: user.schoolId, sessionId: data.sessionId, active: true },
+      select: { id: true, classId: true },
+    });
+    if (enrollments.length !== enrollmentIds.length) throw new Error("One or more selected enrollments are invalid.");
+    const changes = enrollments.filter((item) => item.classId !== targetClass.id);
+    if (!changes.length) throw new Error("The selected students are already in that class.");
+    await tx.enrollmentClassChange.createMany({ data: changes.map((item) => ({
+      schoolId: user.schoolId,
+      enrollmentId: item.id,
+      sessionId: data.sessionId,
+      previousClassId: item.classId,
+      newClassId: targetClass.id,
+      changedById: user.id,
+      changedByName: user.name,
+    })) });
+    await tx.enrollment.updateMany({
+      where: { id: { in: changes.map((item) => item.id) }, schoolId: user.schoolId, sessionId: data.sessionId },
+      data: { classId: targetClass.id },
+    });
+  });
+  revalidatePath("/students");
+  revalidatePath("/reports");
+  revalidatePath("/results");
+}
+
 export async function createSubject(formData: FormData) {
   const user = await requireOwner();
   const data = z.object({ name: z.string().trim().min(1).max(100), classTypeId: positiveInt }).parse(Object.fromEntries(formData));

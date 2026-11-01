@@ -131,7 +131,9 @@ test("promotion offers higher classes and enrolls repeated students even when da
     expect(options).toContain("JSS 2A");
     const target = await db.legacySession.findFirstOrThrow({ where: { schoolId, name: targetName } });
     const nextClass = await db.legacyClass.findFirstOrThrow({ where: { schoolId, sessionId: target.id, name: "JSS 2A" } });
-    expect(await promotion.inputValue()).toBe(String(nextClass.id));
+    expect(await promotion.inputValue()).toBe("");
+    await expect(page.getByRole("button", { name: "Confirm session promotion" })).toBeDisabled();
+    await promotion.selectOption(String(nextClass.id));
     // Reproduce remote database latency inside the real promotion transaction.
     await db.$executeRawUnsafe(`CREATE FUNCTION promotion_delay_${schoolId}() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN

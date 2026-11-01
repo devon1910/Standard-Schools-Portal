@@ -221,6 +221,8 @@ details.panel[open] > summary { border-bottom: 1px solid var(--line); }
 .wizard-class:first-child { border-top: 0; padding-top: 0; }
 .wizard-students { margin-top: 12px; display: grid; gap: 8px; }
 .wizard-student { display: grid; grid-template-columns: 1fr 180px; gap: 12px; align-items: center; padding: 9px; background: #f9fafb; border-radius: 8px; }
+.selection-list { display: grid; gap: 8px; max-height: 320px; overflow: auto; padding: 10px; border: 1px solid var(--line); border-radius: 8px; }
+.selection-list label { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px; background: var(--surface); border-radius: 6px; }
 
 .setup-checklist { margin-bottom: 20px; overflow: hidden; }
 .setup-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--line); }

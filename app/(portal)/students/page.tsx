@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus, Search, Upload } from "lucide-react";
-import { updateFees } from "@/app/actions/admin";
+import { transferStudents, updateFees } from "@/app/actions/admin";
 import StudentCreateForm from "@/components/student-create-form";
 import SubmitButton from "@/components/submit-button";
 import { requireUser } from "@/lib/auth";
@@ -11,6 +11,7 @@ import { EmptyTableRow } from "@/components/empty-state";
 import StudentImportForm from "@/components/student-import-form";
 import StudentSearchInput from "@/components/student-search-input";
 import { displayStudentId } from "@/lib/student-id";
+import ConfirmSubmitButton from "@/components/confirm-submit-button";
 
 const PAGE_SIZE = 20;
 
@@ -122,6 +123,19 @@ export default async function StudentsPage({ searchParams }: { searchParams: Stu
         </div>
         <button className="button button-secondary">Apply</button>
       </form>
+
+      {user.role === "OWNER" && enrollments.length > 0 && sessionId && <details className="panel" style={{ marginBottom: 20 }}>
+        <summary>Move selected students to another class</summary>
+        <div className="panel-body">
+          <form action={transferStudents} className="form-grid">
+            <input type="hidden" name="sessionId" value={sessionId} />
+            <div className="field full"><span className="field-label">Students on this page</span><div className="selection-list">{enrollments.map((item) => <label key={item.id.toString()}><input type="checkbox" name="enrollmentIds" value={item.id.toString()} /> <span>{item.student.name}</span><span className="small muted">{item.class.name}</span></label>)}</div></div>
+            <label className="field full">Destination class<select className="select" name="targetClassId" defaultValue="" required><option value="" disabled>Choose a class</option>{classes.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+            <div className="field full"><div className="notice warning">This changes only the selected enrollments in this session. Earlier session history stays unchanged.</div></div>
+            <div className="form-actions field full"><ConfirmSubmitButton className="button button-primary" pendingLabel="Moving students..." message="Move the selected students to the destination class?">Move selected students</ConfirmSubmitButton></div>
+          </form>
+        </div>
+      </details>}
 
       <section className="card">
         <div className="table-wrap">
